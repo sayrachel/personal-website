@@ -4,12 +4,16 @@ class ConstellationAnimation {
         this.canvas = document.getElementById('constellation-canvas');
         this.ctx = this.canvas.getContext('2d');
         this.stars = [];
-        this.numStars = 500;
+
+        // Detect mobile and adjust star count
+        this.isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+        this.numStars = this.isMobile ? 150 : 500; // Fewer stars on mobile
+
         this.connections = [];
-        this.mouseX = window.innerWidth / 2; // Initialize to center
+        this.mouseX = window.innerWidth / 2;
         this.mouseY = window.innerHeight / 2;
         this.rotationAngle = 0;
-        this.rotationSpeed = 0.0006; // Constant gentle rotation
+        this.rotationSpeed = this.isMobile ? 0.001 : 0.0006; // Faster rotation on mobile
         this.shootingStars = [];
 
         this.init();
@@ -199,7 +203,7 @@ class ConstellationAnimation {
             }, 250); // Wait 250ms after resize stops
         });
 
-        // Track mouse position for large shooting stars
+        // Track mouse position (desktop only)
         document.addEventListener('mousemove', (e) => {
             this.mouseX = e.clientX;
             this.mouseY = e.clientY;
@@ -215,12 +219,6 @@ class ConstellationAnimation {
                 touchStartX = e.touches[0].clientX;
                 touchStartY = e.touches[0].clientY;
             }
-        }, { passive: true });
-
-        document.addEventListener('touchmove', (e) => {
-            const touch = e.touches[0];
-            this.mouseX = touch.clientX;
-            this.mouseY = touch.clientY;
         }, { passive: true });
 
         // Click anywhere to create shooting star (except on interactive elements)
@@ -285,10 +283,15 @@ class ConstellationAnimation {
         // Fully randomized direction - any angle possible
         const angle = Math.random() * Math.PI * 2; // Full 360 degrees
 
-        const speed = 0.3 + Math.random() * 0.4; // Even slower, more graceful
+        // Faster on mobile
+        const speed = this.isMobile
+            ? (0.8 + Math.random() * 0.6)  // Mobile: faster
+            : (0.3 + Math.random() * 0.4); // Desktop: slower, graceful
 
         // More variation in appearance - realistic meteor
-        const length = 150 + Math.random() * 100; // Long trails
+        const length = this.isMobile
+            ? (80 + Math.random() * 60)    // Mobile: shorter trails
+            : (150 + Math.random() * 100); // Desktop: longer trails
         const thickness = 0.8 + Math.random() * 0.6; // Thin, delicate
 
         // Randomized color tinge
@@ -319,6 +322,7 @@ class ConstellationAnimation {
             thickness: thickness,
             opacity: 0.9,
             life: 1,
+            fadeRate: this.isMobile ? 0.003 : 0.0005, // Faster fade on mobile
             color: color,
             sparkles: [],
             startSize: 1, // For scaling effect
@@ -431,8 +435,8 @@ class ConstellationAnimation {
             star.x += star.vx;
             star.y += star.vy;
 
-            // Fade out over time - extremely slow for very long travel
-            star.life -= 0.0005;
+            // Fade out over time - uses per-star fade rate
+            star.life -= star.fadeRate || 0.0005;
 
             // For regular shooting stars (not large), add deep space effect
             if (!star.isLarge && star.scale !== undefined) {

@@ -27,6 +27,10 @@ body {
     width: 100%;
     height: 100%;
     z-index: 0;
+    touch-action: pan-y;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
 }
 
 .container {
@@ -210,6 +214,9 @@ body {
         font-size: 0.95rem;
         line-height: 1.7;
         white-space: normal;
+        text-wrap: balance;
+        max-width: 100%;
+        padding: 0 10px;
     }
 
     .icon-group {
