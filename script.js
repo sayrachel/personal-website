@@ -71,7 +71,7 @@ class SkyAnimation {
 
         // Shared properties
         this.rotationAngle = 0;
-        this.rotationSpeed = this.isMobile ? 0.0028 : 0.0005;
+        this.rotationSpeed = this.isMobile ? 0.002 : 0.0005;
 
         // Dark mode: stars and constellations
         this.stars = [];
@@ -471,17 +471,18 @@ class SkyAnimation {
 
     createContrail(clickX, clickY) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = this.isMobile ? (0.6 + Math.random() * 0.4) : (0.25 + Math.random() * 0.3);
-        const length = this.isMobile ? (60 + Math.random() * 40) : (100 + Math.random() * 60);
+        const speed = this.isMobile ? (0.5 + Math.random() * 0.4) : (0.2 + Math.random() * 0.25);
+        const length = this.isMobile ? (50 + Math.random() * 40) : (80 + Math.random() * 60);
 
         this.contrails.push({
             x: clickX, y: clickY, startX: clickX, startY: clickY,
             vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
             length: length,
             life: 1,
-            fadeRate: this.isMobile ? 0.002 : 0.0004,
-            thickness: 3 + Math.random() * 3,
-            opacity: 0.7
+            fadeRate: this.isMobile ? 0.004 : 0.0008,
+            thickness: 1.5 + Math.random() * 1.5,
+            opacity: 0.8,
+            scale: 1
         });
     }
 
@@ -668,21 +669,36 @@ class SkyAnimation {
             const star2 = this.stars[conn.star2];
             if (!star1 || !star2) return;
 
-            const opacity = conn.opacity * 0.35 * brightnessBoost;
-            if (opacity <= 0 || isNaN(opacity)) return;
+            // Safety checks for valid positions
+            if (isNaN(star1.x) || isNaN(star1.y) || isNaN(star2.x) || isNaN(star2.y)) return;
 
-            const gradient = this.ctx.createLinearGradient(
-                this.centerX + star1.x, this.centerY + star1.y,
-                this.centerX + star2.x, this.centerY + star2.y
-            );
+            const x1 = this.centerX + star1.x;
+            const y1 = this.centerY + star1.y;
+            const x2 = this.centerX + star2.x;
+            const y2 = this.centerY + star2.y;
+
+            // Skip if both stars are outside viewport
+            if ((x1 < -50 && x2 < -50) || (x1 > this.canvas.width + 50 && x2 > this.canvas.width + 50) ||
+                (y1 < -50 && y2 < -50) || (y1 > this.canvas.height + 50 && y2 > this.canvas.height + 50)) return;
+
+            // Skip if stars are too close (prevents degenerate gradients)
+            const dx = x2 - x1;
+            const dy = y2 - y1;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < 1) return;
+
+            const opacity = conn.opacity * 0.35 * brightnessBoost;
+            if (opacity <= 0.001 || opacity > 1 || isNaN(opacity)) return;
+
+            const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
             gradient.addColorStop(0, star1.color);
             gradient.addColorStop(1, star2.color);
 
             this.ctx.beginPath();
-            this.ctx.moveTo(this.centerX + star1.x, this.centerY + star1.y);
-            this.ctx.lineTo(this.centerX + star2.x, this.centerY + star2.y);
+            this.ctx.moveTo(x1, y1);
+            this.ctx.lineTo(x2, y2);
             this.ctx.strokeStyle = gradient;
-            this.ctx.globalAlpha = opacity;
+            this.ctx.globalAlpha = Math.min(opacity, 0.5);
             this.ctx.lineWidth = 1;
             this.ctx.stroke();
         });
@@ -691,26 +707,33 @@ class SkyAnimation {
 
         // Draw stars
         this.stars.forEach(star => {
-            if (!star || isNaN(star.x) || isNaN(star.y)) return;
+            if (!star || isNaN(star.x) || isNaN(star.y) || isNaN(star.size)) return;
 
             const posX = this.centerX + star.x;
             const posY = this.centerY + star.y;
-            const starOpacity = Math.max(0, Math.min(1, star.opacity || 0));
 
-            if (star.hasGlow && starOpacity > 0) {
-                const glowGradient = this.ctx.createRadialGradient(posX, posY, 0, posX, posY, star.size * 4);
+            // Skip stars outside viewport with buffer
+            if (posX < -100 || posX > this.canvas.width + 100 ||
+                posY < -100 || posY > this.canvas.height + 100) return;
+
+            const starOpacity = Math.max(0, Math.min(1, star.opacity || 0));
+            if (starOpacity < 0.01) return;
+
+            if (star.hasGlow && starOpacity > 0.05 && star.size > 0.5) {
+                const glowSize = Math.min(star.size * 4, 50); // Cap glow size
+                const glowGradient = this.ctx.createRadialGradient(posX, posY, 0, posX, posY, glowSize);
                 glowGradient.addColorStop(0, star.color);
                 glowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                const glowOpacity = starOpacity * (star.glowIntensity || 0.3) * brightnessBoost;
-                this.ctx.globalAlpha = Math.min(1, glowOpacity);
+                const glowOpacity = Math.min(1, starOpacity * (star.glowIntensity || 0.3) * brightnessBoost);
+                this.ctx.globalAlpha = glowOpacity;
                 this.ctx.fillStyle = glowGradient;
                 this.ctx.beginPath();
-                this.ctx.arc(posX, posY, star.size * 4, 0, Math.PI * 2);
+                this.ctx.arc(posX, posY, glowSize, 0, Math.PI * 2);
                 this.ctx.fill();
             }
 
             this.ctx.beginPath();
-            this.ctx.arc(posX, posY, Math.max(0.5, star.size), 0, Math.PI * 2);
+            this.ctx.arc(posX, posY, Math.max(0.5, Math.min(star.size, 10)), 0, Math.PI * 2);
             this.ctx.fillStyle = star.color;
             this.ctx.globalAlpha = starOpacity;
             this.ctx.fill();
@@ -847,7 +870,12 @@ class SkyAnimation {
             contrail.y += contrail.vy;
             contrail.life -= contrail.fadeRate;
 
-            if (contrail.life <= 0) return false;
+            // Scale decay like shooting stars
+            contrail.scale = Math.max(0.2, contrail.scale * 0.998);
+            const currentOpacity = Math.pow(contrail.life, 0.6) * contrail.scale * contrail.opacity;
+
+            if (contrail.life <= 0 || contrail.x < -200 || contrail.x > this.canvas.width + 200 ||
+                contrail.y < -200 || contrail.y > this.canvas.height + 200) return false;
 
             // Calculate trail like shooting stars
             const distTraveled = Math.sqrt(
@@ -862,17 +890,17 @@ class SkyAnimation {
             // Soft glow behind
             const glowGradient = this.ctx.createLinearGradient(
                 contrail.x, contrail.y,
-                contrail.x - dirX * trailLength * 0.5, contrail.y - dirY * trailLength * 0.5
+                contrail.x - dirX * trailLength * 0.4, contrail.y - dirY * trailLength * 0.4
             );
-            glowGradient.addColorStop(0, `rgba(255, 255, 255, ${contrail.life * 0.15})`);
+            glowGradient.addColorStop(0, `rgba(255, 255, 255, ${currentOpacity * 0.12})`);
             glowGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
             this.ctx.strokeStyle = glowGradient;
-            this.ctx.lineWidth = contrail.thickness * 4;
+            this.ctx.lineWidth = contrail.thickness * 5 * contrail.scale;
             this.ctx.lineCap = 'round';
             this.ctx.beginPath();
             this.ctx.moveTo(contrail.x, contrail.y);
-            this.ctx.lineTo(contrail.x - dirX * trailLength * 0.5, contrail.y - dirY * trailLength * 0.5);
+            this.ctx.lineTo(contrail.x - dirX * trailLength * 0.4, contrail.y - dirY * trailLength * 0.4);
             this.ctx.stroke();
 
             // Main wispy trail
@@ -880,13 +908,13 @@ class SkyAnimation {
                 contrail.x, contrail.y,
                 contrail.x - dirX * trailLength, contrail.y - dirY * trailLength
             );
-            mainGradient.addColorStop(0, `rgba(255, 255, 255, ${contrail.life * contrail.opacity * 0.8})`);
-            mainGradient.addColorStop(0.2, `rgba(255, 255, 255, ${contrail.life * contrail.opacity * 0.5})`);
-            mainGradient.addColorStop(0.6, `rgba(255, 255, 255, ${contrail.life * contrail.opacity * 0.2})`);
+            mainGradient.addColorStop(0, `rgba(255, 255, 255, ${currentOpacity * 0.65})`);
+            mainGradient.addColorStop(0.1, `rgba(255, 255, 255, ${currentOpacity * 0.5})`);
+            mainGradient.addColorStop(0.4, `rgba(255, 255, 255, ${currentOpacity * 0.2})`);
             mainGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
             this.ctx.strokeStyle = mainGradient;
-            this.ctx.lineWidth = contrail.thickness;
+            this.ctx.lineWidth = contrail.thickness * 2 * contrail.scale;
             this.ctx.beginPath();
             this.ctx.moveTo(contrail.x, contrail.y);
             this.ctx.lineTo(contrail.x - dirX * trailLength, contrail.y - dirY * trailLength);
@@ -895,15 +923,15 @@ class SkyAnimation {
             // Small bright head
             const headGradient = this.ctx.createRadialGradient(
                 contrail.x, contrail.y, 0,
-                contrail.x, contrail.y, 6
+                contrail.x, contrail.y, 5 * contrail.scale
             );
-            headGradient.addColorStop(0, `rgba(255, 255, 255, ${contrail.life * 0.9})`);
-            headGradient.addColorStop(0.5, `rgba(255, 255, 255, ${contrail.life * 0.4})`);
+            headGradient.addColorStop(0, `rgba(255, 255, 255, ${currentOpacity * 0.9})`);
+            headGradient.addColorStop(0.5, `rgba(255, 255, 255, ${currentOpacity * 0.4})`);
             headGradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
             this.ctx.fillStyle = headGradient;
             this.ctx.beginPath();
-            this.ctx.arc(contrail.x, contrail.y, 6, 0, Math.PI * 2);
+            this.ctx.arc(contrail.x, contrail.y, 5 * contrail.scale, 0, Math.PI * 2);
             this.ctx.fill();
 
             return true;
@@ -921,15 +949,24 @@ class SkyAnimation {
             star.headOpacity = Math.max(0, Math.pow(star.life, 1.5) * star.opacity);
             star.tailOpacity = Math.max(0, star.opacity);
 
-            if (star.life <= 0 || star.x < -200 || star.x > this.canvas.width + 200 ||
+            // Safety checks for invalid values
+            if (star.life <= 0 || isNaN(star.x) || isNaN(star.y) ||
+                star.x < -200 || star.x > this.canvas.width + 200 ||
                 star.y < -200 || star.y > this.canvas.height + 200) return false;
 
             const currentScale = star.scale;
             const distTraveled = Math.sqrt(Math.pow(star.x - star.startX, 2) + Math.pow(star.y - star.startY, 2));
             const trailLength = Math.min(distTraveled, star.length);
             const speed = Math.sqrt(star.vx * star.vx + star.vy * star.vy);
+
+            // Prevent division by zero
+            if (speed < 0.001) return false;
+
             const dirX = star.vx / speed;
             const dirY = star.vy / speed;
+
+            // Skip rendering if opacity too low
+            if (star.tailOpacity < 0.01) return false;
 
             // Glow
             const glowGradient = this.ctx.createLinearGradient(
@@ -1016,6 +1053,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeController = new ThemeController();
     new SkyAnimation(themeController);
     new ScrollManager();
+
+    // Hide preloader once everything is ready
+    const preloader = document.getElementById('preloader');
+    if (preloader) {
+        // Small delay to ensure animations are initialized
+        setTimeout(() => {
+            preloader.classList.add('loaded');
+        }, 400);
+    }
 
     // Email copy
     const emailButton = document.querySelector('.email-copy');

@@ -4,6 +4,56 @@
     box-sizing: border-box;
 }
 
+/* Preloader */
+.preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #0a0a0a;
+    z-index: 99999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.5s ease, visibility 0.5s ease;
+}
+
+.preloader.loaded {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+}
+
+.preloader-content {
+    text-align: center;
+}
+
+.preloader-spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Light mode preloader */
+body.light-mode .preloader {
+    background: #e8f4fc;
+}
+
+body.light-mode .preloader-spinner {
+    border-color: rgba(26, 42, 58, 0.1);
+    border-top-color: rgba(26, 42, 58, 0.6);
+}
+
 :root {
     /* Dark mode (default) */
     --bg-primary: #0a0a0a;
@@ -273,6 +323,12 @@ body:not(.light-mode) .content-card {
     margin: 0 0 20px 0;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
     transition: color 0.3s ease;
+}
+
+/* Reset h2 defaults for icon-card-label */
+h2.icon-card-label {
+    font-size: 0.7rem;
+    font-weight: 300;
 }
 
 /* Icon Group */
