@@ -170,10 +170,33 @@ class ConstellationAnimation {
     }
 
     setupEventListeners() {
+        // Debounced resize handler - only triggers on significant size changes
+        let resizeTimeout;
+        let lastWidth = this.canvas.width;
+        let lastHeight = this.canvas.height;
+
         window.addEventListener('resize', () => {
-            this.resizeCanvas();
-            this.createStars();
-            this.createConnections();
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const newWidth = window.innerWidth;
+                const newHeight = window.innerHeight;
+
+                // Only recreate stars if size changed significantly (more than 100px)
+                // This prevents mobile address bar hide/show from resetting stars
+                const widthChange = Math.abs(newWidth - lastWidth);
+                const heightChange = Math.abs(newHeight - lastHeight);
+
+                if (widthChange > 100 || heightChange > 100) {
+                    this.resizeCanvas();
+                    this.createStars();
+                    this.createConnections();
+                    lastWidth = this.canvas.width;
+                    lastHeight = this.canvas.height;
+                } else {
+                    // Just resize canvas without recreating stars
+                    this.resizeCanvas();
+                }
+            }, 250); // Wait 250ms after resize stops
         });
 
         // Track mouse position for large shooting stars
@@ -182,14 +205,32 @@ class ConstellationAnimation {
             this.mouseY = e.clientY;
         });
 
+        // Track touch start position to distinguish taps from scrolls
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let lastTouchTime = 0;
+
+        document.addEventListener('touchstart', (e) => {
+            if (e.touches.length > 0) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
         document.addEventListener('touchmove', (e) => {
             const touch = e.touches[0];
             this.mouseX = touch.clientX;
             this.mouseY = touch.clientY;
-        });
+        }, { passive: true });
 
         // Click anywhere to create shooting star (except on interactive elements)
+        // Only fires on non-touch devices
         document.addEventListener('click', (e) => {
+            // Skip if this was triggered by a touch (within 500ms)
+            if (Date.now() - lastTouchTime < 500) {
+                return;
+            }
+
             // Check if click was on an interactive element
             const target = e.target;
             const isInteractive = target.tagName === 'A' ||
@@ -208,8 +249,20 @@ class ConstellationAnimation {
         });
 
         document.addEventListener('touchend', (e) => {
+            lastTouchTime = Date.now();
+
             if (e.changedTouches.length > 0) {
                 const touch = e.changedTouches[0];
+
+                // Check if this was a tap (not a scroll) - moved less than 20px
+                const deltaX = Math.abs(touch.clientX - touchStartX);
+                const deltaY = Math.abs(touch.clientY - touchStartY);
+
+                if (deltaX > 20 || deltaY > 20) {
+                    // This was a scroll, not a tap - don't create shooting star
+                    return;
+                }
+
                 const target = document.elementFromPoint(touch.clientX, touch.clientY);
                 const isInteractive = target?.tagName === 'A' ||
                                      target?.tagName === 'BUTTON' ||
