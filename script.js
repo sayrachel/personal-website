@@ -71,7 +71,7 @@ class SkyAnimation {
 
         // Shared properties
         this.rotationAngle = 0;
-        this.rotationSpeed = this.isMobile ? 0.0008 : 0.0005;
+        this.rotationSpeed = this.isMobile ? 0.0028 : 0.0005;
 
         // Dark mode: stars and constellations
         this.stars = [];
@@ -81,7 +81,7 @@ class SkyAnimation {
 
         // Light mode: clouds
         this.clouds = [];
-        this.numClouds = this.isMobile ? 28 : 55;
+        this.numClouds = this.isMobile ? 18 : 55;
         this.contrails = []; // Plane streaks
 
         this.init();
@@ -453,8 +453,15 @@ class SkyAnimation {
             depth: 0.15 + Math.random() * 0.85,
             length: baseLength,
             curve: curve,
-            puffs: puffs
+            puffs: puffs,
+            // Add subtle color tints for variety
+            tint: this.getCloudTint()
         });
+    }
+
+    getCloudTint() {
+        // Pure white clouds only
+        return { r: 255, g: 255, b: 255 };
     }
 
     generateCloudPuffs() {
@@ -637,6 +644,9 @@ class SkyAnimation {
     }
 
     animateStars() {
+        // Brightness boost: 20% base + additional 25% on mobile
+        const brightnessBoost = this.isMobile ? 1.5 : 1.2;
+
         // Rotate stars
         this.stars.forEach(star => {
             const parallaxFactor = 0.5 + (star.depth * 0.5);
@@ -647,9 +657,9 @@ class SkyAnimation {
             star.x = star.originalX * cos - star.originalY * sin;
             star.y = star.originalX * sin + star.originalY * cos;
 
-            star.size = star.baseSize * star.depth;
-            const baseOpacity = 0.3 + (star.depth * 0.5);
-            star.opacity = baseOpacity + Math.sin(Date.now() * star.twinkleSpeed) * 0.15;
+            star.size = star.baseSize * star.depth * (this.isMobile ? 1.25 : 1.1);
+            const baseOpacity = 0.35 + (star.depth * 0.55);
+            star.opacity = Math.min(1, (baseOpacity + Math.sin(Date.now() * star.twinkleSpeed) * 0.15) * brightnessBoost);
         });
 
         // Draw connections
@@ -658,7 +668,7 @@ class SkyAnimation {
             const star2 = this.stars[conn.star2];
             if (!star1 || !star2) return;
 
-            const opacity = conn.opacity * 0.35;
+            const opacity = conn.opacity * 0.35 * brightnessBoost;
             if (opacity <= 0 || isNaN(opacity)) return;
 
             const gradient = this.ctx.createLinearGradient(
@@ -691,7 +701,8 @@ class SkyAnimation {
                 const glowGradient = this.ctx.createRadialGradient(posX, posY, 0, posX, posY, star.size * 4);
                 glowGradient.addColorStop(0, star.color);
                 glowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-                this.ctx.globalAlpha = starOpacity * (star.glowIntensity || 0.3);
+                const glowOpacity = starOpacity * (star.glowIntensity || 0.3) * brightnessBoost;
+                this.ctx.globalAlpha = Math.min(1, glowOpacity);
                 this.ctx.fillStyle = glowGradient;
                 this.ctx.beginPath();
                 this.ctx.arc(posX, posY, star.size * 4, 0, Math.PI * 2);
@@ -708,10 +719,78 @@ class SkyAnimation {
         this.ctx.globalAlpha = 1;
     }
 
+    drawVortexCenter() {
+        // Subtle rotating vortex effect at center
+        const vortexSize = this.isMobile ? 120 : 180;
+
+        // Outer soft glow
+        const outerGlow = this.ctx.createRadialGradient(
+            this.centerX, this.centerY, 0,
+            this.centerX, this.centerY, vortexSize * 1.5
+        );
+        outerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
+        outerGlow.addColorStop(0.4, 'rgba(255, 255, 255, 0.04)');
+        outerGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        this.ctx.fillStyle = outerGlow;
+        this.ctx.beginPath();
+        this.ctx.arc(this.centerX, this.centerY, vortexSize * 1.5, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Inner brighter core
+        const innerGlow = this.ctx.createRadialGradient(
+            this.centerX, this.centerY, 0,
+            this.centerX, this.centerY, vortexSize * 0.5
+        );
+        innerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.12)');
+        innerGlow.addColorStop(0.5, 'rgba(255, 255, 255, 0.06)');
+        innerGlow.addColorStop(1, 'rgba(255, 255, 255, 0)');
+
+        this.ctx.fillStyle = innerGlow;
+        this.ctx.beginPath();
+        this.ctx.arc(this.centerX, this.centerY, vortexSize * 0.5, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Subtle spiral arms (rotating with the animation)
+        const numArms = 3;
+        for (let i = 0; i < numArms; i++) {
+            const armAngle = this.rotationAngle * 0.5 + (i * Math.PI * 2 / numArms);
+
+            // Draw curved spiral arm
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+            this.ctx.lineWidth = this.isMobile ? 15 : 25;
+            this.ctx.lineCap = 'round';
+
+            for (let t = 0; t <= 1; t += 0.05) {
+                const spiralRadius = t * vortexSize * 1.2;
+                const spiralAngle = armAngle + t * Math.PI * 0.8;
+                const x = this.centerX + Math.cos(spiralAngle) * spiralRadius;
+                const y = this.centerY + Math.sin(spiralAngle) * spiralRadius;
+
+                if (t === 0) {
+                    this.ctx.moveTo(x, y);
+                } else {
+                    this.ctx.lineTo(x, y);
+                }
+            }
+            this.ctx.stroke();
+        }
+    }
+
     animateClouds() {
+        // Mobile adjustments: higher opacity, smaller clouds for better rotation visibility
+        const opacityBoost = this.isMobile ? 1.4 : 1;
+        const sizeScale = this.isMobile ? 0.6 : 1;
+
+        // Draw subtle vortex center glow
+        this.drawVortexCenter();
+
         // Rotate clouds in swirl pattern like constellations
         this.clouds.forEach(cloud => {
-            const parallaxFactor = 0.5 + (cloud.depth * 0.5);
+            // Increased parallax range: 0.2x to 1x speed based on depth
+            // This makes close clouds rotate much faster than distant ones
+            const parallaxFactor = 0.2 + (cloud.depth * 0.8);
             const effectiveAngle = this.rotationAngle * parallaxFactor;
 
             const cos = Math.cos(effectiveAngle);
@@ -731,26 +810,32 @@ class SkyAnimation {
 
             // Draw each puff as a soft fluffy circle along the cloud path
             cloud.puffs.forEach(puff => {
-                const puffPosX = posX + dirX * cloud.length * (puff.t - 0.5) + perpX * puff.offset;
-                const puffPosY = posY + dirY * cloud.length * (puff.t - 0.5) + perpY * puff.offset;
+                const scaledSize = puff.size * sizeScale;
+                const puffPosX = posX + dirX * cloud.length * sizeScale * (puff.t - 0.5) + perpX * puff.offset * sizeScale;
+                const puffPosY = posY + dirY * cloud.length * sizeScale * (puff.t - 0.5) + perpY * puff.offset * sizeScale;
 
                 // Combine cloud base opacity with per-puff opacity for natural variation
-                const finalOpacity = cloud.opacity * puff.opacity;
+                // Also factor in depth: closer clouds (high depth) are more opaque
+                const depthOpacity = 0.6 + (cloud.depth * 0.4);
+                const finalOpacity = Math.min(1, cloud.opacity * puff.opacity * opacityBoost * depthOpacity);
+
+                // Use cloud tint color
+                const { r, g, b } = cloud.tint;
 
                 // Soft fluffy gradient with varied density
                 const gradient = this.ctx.createRadialGradient(
-                    puffPosX, puffPosY - puff.size * 0.15, 0,
-                    puffPosX, puffPosY, puff.size * 1.2
+                    puffPosX, puffPosY - scaledSize * 0.15, 0,
+                    puffPosX, puffPosY, scaledSize * 1.2
                 );
-                gradient.addColorStop(0, `rgba(255, 255, 255, ${finalOpacity * 0.95})`);
-                gradient.addColorStop(0.25, `rgba(255, 255, 255, ${finalOpacity * 0.75})`);
-                gradient.addColorStop(0.5, `rgba(255, 255, 255, ${finalOpacity * 0.45})`);
-                gradient.addColorStop(0.75, `rgba(255, 255, 255, ${finalOpacity * 0.15})`);
-                gradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${finalOpacity * 0.95})`);
+                gradient.addColorStop(0.25, `rgba(${r}, ${g}, ${b}, ${finalOpacity * 0.75})`);
+                gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${finalOpacity * 0.45})`);
+                gradient.addColorStop(0.75, `rgba(${r}, ${g}, ${b}, ${finalOpacity * 0.15})`);
+                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
 
                 this.ctx.fillStyle = gradient;
                 this.ctx.beginPath();
-                this.ctx.arc(puffPosX, puffPosY, puff.size * 1.2, 0, Math.PI * 2);
+                this.ctx.arc(puffPosX, puffPosY, scaledSize * 1.2, 0, Math.PI * 2);
                 this.ctx.fill();
             });
         });
