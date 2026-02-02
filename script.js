@@ -363,6 +363,12 @@ class ConstellationAnimation {
             const star1 = this.stars[conn.star1];
             const star2 = this.stars[conn.star2];
 
+            // Skip if stars don't exist or have invalid data
+            if (!star1 || !star2 || !star1.color || !star2.color) return;
+
+            const opacity = conn.opacity * 0.4;
+            if (opacity <= 0 || isNaN(opacity)) return;
+
             const gradient = this.ctx.createLinearGradient(
                 this.centerX + star1.x,
                 this.centerY + star1.y,
@@ -382,7 +388,7 @@ class ConstellationAnimation {
                 this.centerY + star2.y
             );
             this.ctx.strokeStyle = gradient;
-            this.ctx.globalAlpha = conn.opacity * 0.4;
+            this.ctx.globalAlpha = opacity;
             this.ctx.lineWidth = 1;
             this.ctx.stroke();
         });
@@ -392,11 +398,15 @@ class ConstellationAnimation {
 
         // Draw stars with glow effects
         this.stars.forEach(star => {
+            // Skip invalid stars
+            if (!star || !star.color || isNaN(star.x) || isNaN(star.y)) return;
+
             const posX = this.centerX + star.x;
             const posY = this.centerY + star.y;
+            const starOpacity = Math.max(0, Math.min(1, star.opacity || 0));
 
             // Draw glow for celestial bodies
-            if (star.hasGlow) {
+            if (star.hasGlow && starOpacity > 0) {
                 const glowGradient = this.ctx.createRadialGradient(
                     posX, posY, 0,
                     posX, posY, star.size * 4
@@ -404,7 +414,7 @@ class ConstellationAnimation {
                 glowGradient.addColorStop(0, star.color);
                 glowGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
-                this.ctx.globalAlpha = star.opacity * star.glowIntensity;
+                this.ctx.globalAlpha = starOpacity * (star.glowIntensity || 0.3);
                 this.ctx.fillStyle = glowGradient;
                 this.ctx.beginPath();
                 this.ctx.arc(posX, posY, star.size * 4, 0, Math.PI * 2);
@@ -413,13 +423,13 @@ class ConstellationAnimation {
 
             // Draw main body
             this.ctx.beginPath();
-            this.ctx.arc(posX, posY, star.size, 0, Math.PI * 2);
+            this.ctx.arc(posX, posY, Math.max(0.5, star.size), 0, Math.PI * 2);
             this.ctx.fillStyle = star.color;
-            this.ctx.globalAlpha = star.opacity;
+            this.ctx.globalAlpha = starOpacity;
             this.ctx.fill();
 
             // Add subtle inner glow
-            if (star.size > 2) {
+            if (star.size > 2 && starOpacity > 0) {
                 const innerGlow = this.ctx.createRadialGradient(
                     posX, posY, 0,
                     posX, posY, star.size
@@ -427,7 +437,7 @@ class ConstellationAnimation {
                 innerGlow.addColorStop(0, '#ffffff');
                 innerGlow.addColorStop(1, star.color);
                 this.ctx.fillStyle = innerGlow;
-                this.ctx.globalAlpha = star.opacity * 0.8;
+                this.ctx.globalAlpha = starOpacity * 0.8;
                 this.ctx.fill();
             }
         });
@@ -605,23 +615,67 @@ document.addEventListener('DOMContentLoaded', () => {
     // Email copy button
     const emailButton = document.querySelector('.email-copy');
     if (emailButton) {
-        emailButton.addEventListener('click', async () => {
+        const copyEmail = async (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+
             const email = emailButton.getAttribute('data-email');
+            const label = emailButton.querySelector('.icon-label');
+            const originalLabel = label ? label.textContent : '';
+
             try {
                 await navigator.clipboard.writeText(email);
                 emailButton.classList.add('copied');
 
-                // Update tooltip temporarily
+                // Update tooltip
                 const originalTooltip = emailButton.getAttribute('data-tooltip');
                 emailButton.setAttribute('data-tooltip', 'Copied!');
+
+                // Update label for mobile
+                if (label) {
+                    label.textContent = 'Copied!';
+                }
 
                 setTimeout(() => {
                     emailButton.classList.remove('copied');
                     emailButton.setAttribute('data-tooltip', originalTooltip);
+                    if (label) {
+                        label.textContent = originalLabel;
+                    }
                 }, 2000);
             } catch (err) {
                 console.error('Failed to copy email:', err);
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = email;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-9999px';
+                document.body.appendChild(textArea);
+                textArea.select();
+                try {
+                    document.execCommand('copy');
+                    emailButton.classList.add('copied');
+                    if (label) {
+                        label.textContent = 'Copied!';
+                    }
+                    setTimeout(() => {
+                        emailButton.classList.remove('copied');
+                        if (label) {
+                            label.textContent = originalLabel;
+                        }
+                    }, 2000);
+                } catch (fallbackErr) {
+                    console.error('Fallback copy failed:', fallbackErr);
+                }
+                document.body.removeChild(textArea);
             }
+        };
+
+        // Handle both click and touch for better mobile support
+        emailButton.addEventListener('click', copyEmail);
+        emailButton.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            copyEmail(e);
         });
     }
 
