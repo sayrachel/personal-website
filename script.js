@@ -252,11 +252,11 @@ class ConstellationAnimation {
             if (e.changedTouches.length > 0) {
                 const touch = e.changedTouches[0];
 
-                // Check if this was a tap (not a scroll) - moved less than 20px
+                // Check if this was a tap (not a scroll) - moved less than 30px
                 const deltaX = Math.abs(touch.clientX - touchStartX);
                 const deltaY = Math.abs(touch.clientY - touchStartY);
 
-                if (deltaX > 20 || deltaY > 20) {
+                if (deltaX > 30 || deltaY > 30) {
                     // This was a scroll, not a tap - don't create shooting star
                     return;
                 }
@@ -387,6 +387,9 @@ class ConstellationAnimation {
             this.ctx.stroke();
         });
 
+        // Reset globalAlpha after connections
+        this.ctx.globalAlpha = 1;
+
         // Draw stars with glow effects
         this.stars.forEach(star => {
             const posX = this.centerX + star.x;
@@ -429,6 +432,9 @@ class ConstellationAnimation {
             }
         });
 
+        // Reset globalAlpha after stars
+        this.ctx.globalAlpha = 1;
+
         // Update and draw shooting stars
         this.shootingStars = this.shootingStars.filter(star => {
             // Update position
@@ -448,19 +454,21 @@ class ConstellationAnimation {
             }
 
             // Head fades faster than tail - head disappears first
-            star.headOpacity = Math.pow(star.life, 1.5) * star.opacity; // Head fades much faster
-            star.tailOpacity = star.opacity; // Tail maintains normal opacity
+            star.headOpacity = Math.max(0, Math.pow(star.life, 1.5) * star.opacity); // Head fades much faster
+            star.tailOpacity = Math.max(0, star.opacity); // Tail maintains normal opacity
 
-            // Fewer sparkles - more delicate (more for large stars)
-            const sparkleChance = star.isLarge ? 0.4 : 0.1; // Fewer sparkles for small stars
-            if (star.life > 0.3 && Math.random() < sparkleChance) {
-                const currentScale = star.scale || 1;
-                star.sparkles.push({
-                    x: star.x + (Math.random() - 0.5) * (star.isLarge ? 15 : 8) * currentScale,
-                    y: star.y + (Math.random() - 0.5) * (star.isLarge ? 15 : 8) * currentScale,
-                    life: 1,
-                    size: star.isLarge ? (0.6 + Math.random() * 1) : (0.2 + Math.random() * 0.4) * currentScale
-                });
+            // Fewer sparkles - disabled on mobile to prevent rendering issues
+            if (!this.isMobile) {
+                const sparkleChance = star.isLarge ? 0.4 : 0.1;
+                if (star.life > 0.3 && Math.random() < sparkleChance) {
+                    const currentScale = star.scale || 1;
+                    star.sparkles.push({
+                        x: star.x + (Math.random() - 0.5) * (star.isLarge ? 15 : 8) * currentScale,
+                        y: star.y + (Math.random() - 0.5) * (star.isLarge ? 15 : 8) * currentScale,
+                        life: 1,
+                        size: star.isLarge ? (0.6 + Math.random() * 1) : (0.2 + Math.random() * 0.4) * currentScale
+                    });
+                }
             }
 
             // Update sparkles
@@ -577,6 +585,9 @@ class ConstellationAnimation {
                 this.ctx.arc(sparkle.x, sparkle.y, sparkle.size, 0, Math.PI * 2);
                 this.ctx.fill();
             });
+
+            // Reset globalAlpha after each shooting star to prevent bleeding
+            this.ctx.globalAlpha = 1;
 
             return true;
         });
