@@ -239,9 +239,6 @@ body {
     height: 140px;
     border-radius: 50%;
     object-fit: cover;
-    border: 2px solid var(--border-color);
-    box-shadow: 0 0 40px rgba(100, 181, 246, 0.15);
-    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .name {
