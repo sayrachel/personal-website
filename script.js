@@ -195,7 +195,7 @@ class SkyAnimation {
         // Dark mode: stars and constellations
         this.stars = [];
         this.connections = [];
-        this.numStars = this.isMobile ? 120 : 400;
+        this.numStars = this.isMobile ? 140 : 600;
         this.shootingStars = [];
 
         // Light mode: clouds (image-based)
@@ -365,8 +365,10 @@ class SkyAnimation {
 
     createConnections() {
         this.connections = [];
-        const connectionDistance = 140;
+        const connectionDistance = this.isMobile ? 90 : 110;
 
+        // First pass: create all potential connections
+        const potentialConnections = [];
         for (let i = 0; i < this.stars.length; i++) {
             for (let j = i + 1; j < this.stars.length; j++) {
                 if (this.stars[i].isFaint || this.stars[j].isFaint) continue;
@@ -376,13 +378,25 @@ class SkyAnimation {
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
                 if (distance < connectionDistance) {
-                    this.connections.push({
+                    potentialConnections.push({
                         star1: i, star2: j,
                         opacity: 0.12 * (1 - distance / connectionDistance)
                     });
                 }
             }
         }
+
+        // Count connections per star
+        const connectionCount = {};
+        potentialConnections.forEach(conn => {
+            connectionCount[conn.star1] = (connectionCount[conn.star1] || 0) + 1;
+            connectionCount[conn.star2] = (connectionCount[conn.star2] || 0) + 1;
+        });
+
+        // Only keep connections where at least one star has multiple connections
+        this.connections = potentialConnections.filter(conn =>
+            connectionCount[conn.star1] > 1 || connectionCount[conn.star2] > 1
+        );
     }
 
     createShootingStar(clickX, clickY) {
@@ -417,65 +431,59 @@ class SkyAnimation {
 
         const maxDimension = Math.max(this.canvas.width, this.canvas.height);
 
-        // Create 3-5 cloud clusters at random positions around the sky
-        const numClusters = this.isMobile ? 3 : (4 + Math.floor(Math.random() * 2));
-        const clusters = [];
+        // Create 2-3 TIGHT cloud clusters (bunched up clouds)
+        const numTightClusters = this.isMobile ? 2 : 3;
 
-        for (let c = 0; c < numClusters; c++) {
-            const clusterAngle = (c / numClusters) * Math.PI * 2 + (Math.random() - 0.5) * 1.2;
-            const clusterRadius = 150 + Math.random() * maxDimension * 0.35;
+        for (let c = 0; c < numTightClusters; c++) {
+            const clusterAngle = (c / numTightClusters) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
+            const clusterRadius = 100 + Math.random() * maxDimension * 0.25;
+            const clusterX = Math.cos(clusterAngle) * clusterRadius;
+            const clusterY = Math.sin(clusterAngle) * clusterRadius;
+            const clusterSize = 80 + Math.random() * 60; // Tighter clusters
 
-            clusters.push({
-                x: Math.cos(clusterAngle) * clusterRadius,
-                y: Math.sin(clusterAngle) * clusterRadius,
-                size: 150 + Math.random() * 200
-            });
-        }
-
-        // For each cluster, add image-based clouds
-        clusters.forEach((cluster) => {
-            // Large clouds (1-2 per cluster)
-            const numLarge = this.isMobile ? 1 : (1 + Math.floor(Math.random() * 2));
+            // 1-2 large clouds per tight cluster
+            const numLarge = 1 + Math.floor(Math.random() * 2);
             for (let i = 0; i < numLarge; i++) {
                 const offsetAngle = Math.random() * Math.PI * 2;
-                const offsetDist = Math.random() * cluster.size * 0.3;
+                const offsetDist = Math.random() * clusterSize * 0.25;
                 this.addImageCloud(
-                    cluster.x + Math.cos(offsetAngle) * offsetDist,
-                    cluster.y + Math.sin(offsetAngle) * offsetDist,
+                    clusterX + Math.cos(offsetAngle) * offsetDist,
+                    clusterY + Math.sin(offsetAngle) * offsetDist,
                     'large'
                 );
             }
 
-            // Medium clouds
+            // 3-5 medium clouds bunched around the large ones
             const numMedium = this.isMobile ? 2 : (3 + Math.floor(Math.random() * 3));
             for (let i = 0; i < numMedium; i++) {
                 const offsetAngle = Math.random() * Math.PI * 2;
-                const offsetDist = Math.random() * cluster.size * 0.6;
+                const offsetDist = Math.random() * clusterSize * 0.5;
                 this.addImageCloud(
-                    cluster.x + Math.cos(offsetAngle) * offsetDist,
-                    cluster.y + Math.sin(offsetAngle) * offsetDist,
+                    clusterX + Math.cos(offsetAngle) * offsetDist,
+                    clusterY + Math.sin(offsetAngle) * offsetDist,
                     'medium'
                 );
             }
-        });
+        }
 
-        // Add wispy clouds between clusters
-        const numWispy = this.isMobile ? 2 : 5;
-        for (let i = 0; i < numWispy; i++) {
+        // Add isolated drifting clouds scattered far apart
+        const numDrifting = this.isMobile ? 3 : 6;
+        for (let i = 0; i < numDrifting; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 100 + Math.random() * maxDimension * 0.5;
+            const radius = 250 + Math.random() * maxDimension * 0.5; // Further out
+            const type = Math.random() > 0.4 ? 'medium' : 'large';
             this.addImageCloud(
                 Math.cos(angle) * radius,
                 Math.sin(angle) * radius,
-                'wispy'
+                type
             );
         }
 
-        // Add hazy background clouds
+        // Add distant hazy atmosphere clouds (very far, very subtle)
         const numHazy = this.isMobile ? 2 : 4;
         for (let i = 0; i < numHazy; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 200 + Math.random() * maxDimension * 0.4;
+            const radius = 350 + Math.random() * maxDimension * 0.4;
             this.addImageCloud(
                 Math.cos(angle) * radius,
                 Math.sin(angle) * radius,
@@ -1395,7 +1403,11 @@ class SkyAnimation {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < 1) return;
 
-            const opacity = conn.opacity * (this.isMobile ? 0.5 : 0.65) * brightnessBoost;
+            // Limit max line length to prevent unnaturally long lines
+            const maxLineLength = this.isMobile ? 100 : 120;
+            if (dist > maxLineLength) return;
+
+            const opacity = conn.opacity * (this.isMobile ? 0.35 : 0.65) * brightnessBoost;
             if (opacity <= 0.001 || opacity > 1 || isNaN(opacity)) return;
 
             const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
@@ -1406,8 +1418,8 @@ class SkyAnimation {
             this.ctx.moveTo(x1, y1);
             this.ctx.lineTo(x2, y2);
             this.ctx.strokeStyle = gradient;
-            this.ctx.globalAlpha = Math.min(opacity, this.isMobile ? 0.65 : 0.75);
-            this.ctx.lineWidth = this.isMobile ? 1.2 : 1.4;
+            this.ctx.globalAlpha = Math.min(opacity, this.isMobile ? 0.5 : 0.75);
+            this.ctx.lineWidth = this.isMobile ? 1.0 : 1.4;
             this.ctx.stroke();
         });
 
