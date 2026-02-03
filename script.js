@@ -5,42 +5,58 @@ class ThemeToggleController {
         this.moonIcon = document.getElementById('theme-icon-moon');
         this.sunIcon = document.getElementById('theme-icon-sun');
         this.animation = null;
+        this.animationFrame = null;
         this.currentValue = 0; // 0 = dark, 100 = light
         this.isAnimating = false;
 
         // Sky transition keyframes - controls stars and clouds opacity
         this.skyKeyframes = {
-            0: { // Deep night
-                sky: ['#0a0a12', '#12121f'],
+            0: { // Deep night - dark blue
+                sky: ['#0a0a15', '#0f0f1a'],
                 stars: 1,
                 clouds: 0
             },
-            25: { // Late night
-                sky: ['#151530', '#1e1e3a'],
-                stars: 0.85,
+            15: { // Night - subtle purple hint
+                sky: ['#12122a', '#1a1a35'],
+                stars: 0.9,
                 clouds: 0
             },
-            45: { // Aurora phase
-                sky: ['#2e2455', '#4a3070'],
-                stars: 0.5,
+            30: { // Pre-dawn - deep purple
+                sky: ['#1e1540', '#2d2055'],
+                stars: 0.7,
                 clouds: 0
             },
-            60: { // Sunrise transition
-                sky: ['#5c3d7a', '#d4728c'],
+            42: { // Aurora/twilight - clouds start as whispers
+                sky: ['#3d2860', '#5a3575'],
+                stars: 0.4,
+                clouds: 0.02
+            },
+            52: { // Early sunrise - barely visible clouds
+                sky: ['#6b4070', '#c45c80'],
                 stars: 0.15,
-                clouds: 0
+                clouds: 0.05
             },
-            75: { // Early morning - clouds start appearing
-                sky: ['#8dcfc8', '#9dd5e8'],
+            62: { // Sunrise - warm pink and peach
+                sky: ['#d4728c', '#f0a090'],
                 stars: 0,
-                clouds: 0.4
+                clouds: 0.1
             },
-            90: { // Morning sky
-                sky: ['#8ad4eb', '#c5e8f5'],
+            72: { // Golden hour - soft warm tones
+                sky: ['#e8a088', '#b8d8d0'],
                 stars: 0,
-                clouds: 0.75
+                clouds: 0.2
             },
-            100: { // Full day
+            82: { // Morning - transitioning to blue
+                sky: ['#90c8d0', '#a8dce8'],
+                stars: 0,
+                clouds: 0.35
+            },
+            92: { // Late morning - almost day
+                sky: ['#85cfeb', '#c0e8f5'],
+                stars: 0,
+                clouds: 0.55
+            },
+            100: { // Full day - bright sky blue - clouds reach full opacity
                 sky: ['#87ceeb', '#e8f4fc'],
                 stars: 0,
                 clouds: 1
@@ -64,13 +80,12 @@ class ThemeToggleController {
         // Toggle button click
         if (this.toggleBtn) {
             this.toggleBtn.addEventListener('click', (e) => {
-                if (this.isAnimating) return;
-
+                // Allow interrupting - determine target based on current value
                 if (this.currentValue > 50) {
-                    // Currently light, go to dark
+                    // Currently light (or heading light), go to dark
                     this.animateTransition(0);
                 } else {
-                    // Currently dark, go to light
+                    // Currently dark (or heading dark), go to light
                     this.animateTransition(100);
                 }
             });
@@ -78,7 +93,10 @@ class ThemeToggleController {
     }
 
     animateTransition(targetValue) {
-        if (this.isAnimating) return;
+        // Cancel any existing animation
+        if (this.animationFrame) {
+            cancelAnimationFrame(this.animationFrame);
+        }
         this.isAnimating = true;
 
         // Disable button during transition
@@ -88,16 +106,16 @@ class ThemeToggleController {
 
         const startValue = this.currentValue;
         const diff = targetValue - startValue;
-        const duration = 3000; // 3 seconds for full transition
+        // Scale duration based on how far we need to travel (for smoother interrupts)
+        const fullDuration = 5000;
+        const duration = Math.abs(diff / 100) * fullDuration;
         const startTime = Date.now();
 
         const animate = () => {
             const elapsed = Date.now() - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            // Ease in-out for smooth transition
-            const eased = progress < 0.5
-                ? 2 * progress * progress
-                : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+            // Sine ease-in-out - starts noticeably, smooth throughout
+            const eased = -(Math.cos(Math.PI * progress) - 1) / 2;
 
             this.currentValue = Math.round(startValue + diff * eased);
             this.updateSky();
@@ -105,9 +123,10 @@ class ThemeToggleController {
             this.updateIcons();
 
             if (progress < 1) {
-                requestAnimationFrame(animate);
+                this.animationFrame = requestAnimationFrame(animate);
             } else {
                 this.isAnimating = false;
+                this.animationFrame = null;
                 // Re-enable button after transition
                 if (this.toggleBtn) {
                     this.toggleBtn.classList.remove('transitioning');
@@ -115,7 +134,7 @@ class ThemeToggleController {
             }
         };
 
-        requestAnimationFrame(animate);
+        this.animationFrame = requestAnimationFrame(animate);
     }
 
     updateIcons() {
@@ -224,6 +243,11 @@ class ThemeToggleController {
             g: parseInt(result[2], 16),
             b: parseInt(result[3], 16)
         } : { r: 0, g: 0, b: 0 };
+    }
+
+    getInterpolatedValue(property) {
+        const state = this.interpolateSkyState(this.currentValue);
+        return state[property] || 0;
     }
 
     setAnimation(animation) {
@@ -641,7 +665,8 @@ class SkyAnimation {
             originalY: y,
             image: image,
             scale: scale,
-            opacity: opacity,
+            baseOpacity: opacity, // Store base opacity
+            cloudType: type, // Store type for transition timing
             depth: depth,
             rotation: (Math.random() - 0.5) * 0.3, // Slight rotation variation
             flipX: Math.random() > 0.5, // Random horizontal flip for variety
@@ -1632,9 +1657,33 @@ class SkyAnimation {
         // Image-based cloud rendering
         if (!this.cloudImagesLoaded || this.clouds.length === 0) return;
 
+        // Get current cloud visibility from theme controller
+        const cloudVisibility = this.themeController ?
+            this.themeController.getInterpolatedValue('clouds') : 1;
+
         this.clouds.forEach(cloud => {
             // Skip if no image
             if (!cloud.image) return;
+
+            // Calculate opacity based on cloud type - different types fade in at different rates
+            let typeMultiplier;
+            if (cloud.cloudType === 'hazy' || cloud.cloudType === 'distant') {
+                // Hazy/distant appear early - visible when cloudVisibility > 0.02
+                // They reach their full baseOpacity when cloudVisibility hits ~0.25
+                typeMultiplier = Math.min(1, cloudVisibility * 4);
+            } else {
+                // Large/medium clouds - start when cloudVisibility > 0.25
+                // Extra smooth cubic sine fade for very natural appearance
+                const delayed = Math.max(0, (cloudVisibility - 0.25) / 0.75);
+                // Double sine ease for ultra-smooth fade (S-curve)
+                const smooth = delayed <= 0 ? 0 : (1 - Math.cos(delayed * Math.PI)) / 2;
+                typeMultiplier = smooth * smooth; // Square it for even gentler start
+            }
+
+            const finalOpacity = cloud.baseOpacity * typeMultiplier;
+
+            // Skip if not visible
+            if (finalOpacity < 0.01) return;
 
             // Update drift
             cloud.originalX += cloud.driftX;
@@ -1677,7 +1726,7 @@ class SkyAnimation {
             }
 
             // Set opacity and blend mode
-            this.ctx.globalAlpha = cloud.opacity;
+            this.ctx.globalAlpha = finalOpacity;
             this.ctx.globalCompositeOperation = 'screen'; // Makes black transparent
 
             // Draw the cloud image centered
