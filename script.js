@@ -108,7 +108,7 @@ class ThemeToggleController {
         const startValue = this.currentValue;
         const diff = targetValue - startValue;
         // Scale duration based on how far we need to travel (for smoother interrupts)
-        const fullDuration = 5000;
+        const fullDuration = 2500;
         const duration = Math.abs(diff / 100) * fullDuration;
         const startTime = Date.now();
 
