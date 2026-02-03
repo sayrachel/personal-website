@@ -29,66 +29,56 @@
         </button>
     </div>
 
-    <main class="scroll-container">
-        <!-- Hero Section -->
-        <section class="scroll-section hero-section" data-section="0" aria-label="Introduction">
-            <header class="section-inner">
+    <main class="main-container">
+        <!-- Hero Section - All content in one viewport -->
+        <section class="hero-section" aria-label="Introduction">
+            <header class="hero-header">
                 <figure class="profile-image-container">
                     <img src="profile.jpg" alt="Rachel Ma - Profile Photo" class="profile-image" id="profile-pic">
                 </figure>
                 <h1 class="name">Rachel Ma</h1>
-                <article class="content-card">
-                    <p class="card-description">Let's chat.</p>
-                    <div class="card-divider" role="separator"></div>
-                    <h2 class="icon-card-label">Contact</h2>
-                    <nav class="icon-group" aria-label="Contact links">
-                        <a href="https://www.linkedin.com/in/irachelma/" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="LinkedIn" aria-label="LinkedIn profile">
-                            <i class="fab fa-linkedin" aria-hidden="true"></i>
-                            <span class="icon-label">LinkedIn</span>
-                        </a>
-                        <button class="icon-link email-copy" data-tooltip="Copy email" data-email="irachelma@gmail.com" aria-label="Copy email address">
-                            <i class="far fa-envelope" aria-hidden="true"></i>
-                            <span class="icon-label">Email</span>
-                        </button>
-                        <a href="https://github.com/sayrachel" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="GitHub" aria-label="GitHub profile">
-                            <i class="fab fa-github" aria-hidden="true"></i>
-                            <span class="icon-label">GitHub</span>
-                        </a>
-                    </nav>
-                </article>
-            </header>
-        </section>
 
-        <!-- Products Section -->
-        <section class="scroll-section products-section" data-section="1" aria-label="Work and products">
-            <div class="section-inner">
+                <!-- Contact icons directly under name -->
+                <h2 class="contact-label">Contact</h2>
+                <nav class="contact-icons" aria-label="Contact links">
+                    <a href="https://www.linkedin.com/in/irachelma/" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="LinkedIn" aria-label="LinkedIn profile">
+                        <i class="fab fa-linkedin" aria-hidden="true"></i>
+                    </a>
+                    <button class="icon-link email-copy" data-tooltip="Copy email" data-email="irachelma@gmail.com" aria-label="Copy email address">
+                        <i class="far fa-envelope" aria-hidden="true"></i>
+                    </button>
+                    <a href="https://github.com/sayrachel" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="GitHub" aria-label="GitHub profile">
+                        <i class="fab fa-github" aria-hidden="true"></i>
+                    </a>
+                </nav>
+            </header>
+
+            <!-- Three cards in a row -->
+            <div class="cards-row">
+                <!-- Work Card -->
                 <article class="content-card">
                     <p class="card-description">
-                        Senior Product Manager @ Meta building AI-powered productivity tools for next generation devices. Experience shipping zero-to-one products to end users, businesses, and developers, impacting millions of users.
+                        Senior Product Manager @ Meta building AI-powered productivity tools for next generation devices.
                     </p>
                     <div class="card-divider" role="separator"></div>
                     <h2 class="icon-card-label">Launched</h2>
                     <nav class="icon-group" aria-label="Launched products">
-                        <a href="https://www.theverge.com/2024/11/1/24285641/meta-quest-os-update-v71-redesign-train-mode-calendar" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Meta Quest Calendar" aria-label="Meta Quest Calendar">
+                        <a href="https://www.theverge.com/2024/11/1/24285641/meta-quest-os-update-v71-redesign-train-mode-calendar" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Calendar" aria-label="Meta Quest Calendar">
                             <i class="far fa-calendar-alt" aria-hidden="true"></i>
                             <span class="icon-label">Calendar</span>
                         </a>
-                        <a href="https://www.meta.com/help/quest/1472856609714504/" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Meta Quest Files" aria-label="Meta Quest Files">
+                        <a href="https://www.meta.com/help/quest/1472856609714504/" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Files" aria-label="Meta Quest Files">
                             <i class="far fa-folder-open" aria-hidden="true"></i>
                             <span class="icon-label">Files</span>
                         </a>
-                        <a href="https://www.youtube.com/watch?v=XAs7jnDh5rM" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Meta AI Translation" aria-label="Meta AI Translation">
+                        <a href="https://www.youtube.com/watch?v=XAs7jnDh5rM" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Translation" aria-label="Meta AI Translation">
                             <i class="fas fa-language" aria-hidden="true"></i>
                             <span class="icon-label">Translation</span>
                         </a>
                     </nav>
                 </article>
-            </div>
-        </section>
 
-        <!-- Projects Section -->
-        <section class="scroll-section projects-section" data-section="2" aria-label="Projects">
-            <div class="section-inner">
+                <!-- Projects Card -->
                 <article class="content-card">
                     <p class="card-description">
                         Learning how to build.
@@ -106,15 +96,11 @@
                         </a>
                     </nav>
                 </article>
-            </div>
-        </section>
 
-        <!-- Interests Section -->
-        <section class="scroll-section interests-section" data-section="3" aria-label="Current interests">
-            <div class="section-inner">
+                <!-- Interests Card -->
                 <article class="content-card">
                     <p class="card-description">
-                        Finding meaning through chasing&nbsp;curiosity and curating&nbsp;ideas. Often&nbsp;found dancing, lifting, or&nbsp;connecting.
+                        Finding meaning through chasing curiosity and curating ideas.
                     </p>
                     <div class="card-divider" role="separator"></div>
                     <h2 class="icon-card-label">My Training Data</h2>
@@ -132,14 +118,6 @@
             </div>
         </section>
     </main>
-
-    <!-- Section indicators (hidden) -->
-    <nav class="section-indicators" aria-label="Page sections">
-        <button class="indicator active" data-section="0" aria-label="Go to introduction"></button>
-        <button class="indicator" data-section="1" aria-label="Go to work"></button>
-        <button class="indicator" data-section="2" aria-label="Go to projects"></button>
-        <button class="indicator" data-section="3" aria-label="Go to interests"></button>
-    </nav>
 
     <script src="script.js"></script>
     <script defer src="https://va.vercel-scripts.com/v1/script.js"></script>
