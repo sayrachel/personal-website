@@ -1,9 +1,52 @@
-// Theme and Animation Controller
-class ThemeController {
+// Theme Toggle Controller - Animated dark/light transition
+class ThemeToggleController {
     constructor() {
-        this.isLightMode = false;
-        this.toggle = document.getElementById('theme-toggle');
-        this.icon = document.getElementById('theme-icon');
+        this.toggleBtn = document.getElementById('theme-toggle-btn');
+        this.moonIcon = document.getElementById('theme-icon-moon');
+        this.sunIcon = document.getElementById('theme-icon-sun');
+        this.animation = null;
+        this.currentValue = 0; // 0 = dark, 100 = light
+        this.isAnimating = false;
+
+        // Sky transition keyframes - controls stars and clouds opacity
+        this.skyKeyframes = {
+            0: { // Deep night
+                sky: ['#0a0a12', '#12121f'],
+                stars: 1,
+                clouds: 0
+            },
+            25: { // Late night
+                sky: ['#151530', '#1e1e3a'],
+                stars: 0.85,
+                clouds: 0
+            },
+            45: { // Aurora phase
+                sky: ['#2e2455', '#4a3070'],
+                stars: 0.5,
+                clouds: 0
+            },
+            60: { // Sunrise transition
+                sky: ['#5c3d7a', '#d4728c'],
+                stars: 0.15,
+                clouds: 0
+            },
+            75: { // Early morning - clouds start appearing
+                sky: ['#8dcfc8', '#9dd5e8'],
+                stars: 0,
+                clouds: 0.4
+            },
+            90: { // Morning sky
+                sky: ['#8ad4eb', '#c5e8f5'],
+                stars: 0,
+                clouds: 0.75
+            },
+            100: { // Full day
+                sky: ['#87ceeb', '#e8f4fc'],
+                stars: 0,
+                clouds: 1
+            }
+        };
+
         this.init();
     }
 
@@ -11,52 +54,126 @@ class ThemeController {
         // Check for saved preference
         const savedTheme = localStorage.getItem('theme');
         if (savedTheme === 'light') {
-            this.enableLightMode();
+            this.currentValue = 100;
+            document.body.classList.add('light-mode');
         }
 
-        if (this.toggle) {
-            this.toggle.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleTheme();
+        // Toggle button click
+        if (this.toggleBtn) {
+            this.toggleBtn.addEventListener('click', (e) => {
+                if (this.isAnimating) return;
+
+                if (this.currentValue > 50) {
+                    // Currently light, go to dark
+                    this.animateTransition(0);
+                } else {
+                    // Currently dark, go to light
+                    this.animateTransition(100);
+                }
             });
         }
     }
 
-    toggleTheme() {
-        if (this.isLightMode) {
-            this.enableDarkMode();
+    animateTransition(targetValue) {
+        if (this.isAnimating) return;
+        this.isAnimating = true;
+
+        const startValue = this.currentValue;
+        const diff = targetValue - startValue;
+        const duration = 3000; // 3 seconds for full transition
+        const startTime = Date.now();
+
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // Ease in-out for smooth transition
+            const eased = progress < 0.5
+                ? 2 * progress * progress
+                : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+
+            this.currentValue = Math.round(startValue + diff * eased);
+            this.updateSky();
+            this.updateBodyClass();
+
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            } else {
+                this.isAnimating = false;
+            }
+        };
+
+        requestAnimationFrame(animate);
+    }
+
+    updateBodyClass() {
+        if (this.currentValue > 50) {
+            document.body.classList.add('light-mode');
+            localStorage.setItem('theme', 'light');
         } else {
-            this.enableLightMode();
+            document.body.classList.remove('light-mode');
+            localStorage.setItem('theme', 'dark');
         }
     }
 
-    enableLightMode() {
-        this.isLightMode = true;
-        document.body.classList.add('light-mode');
-        if (this.icon) {
-            this.icon.className = 'fa-regular fa-sun';
-        }
-        localStorage.setItem('theme', 'light');
-        if (window.animation) {
-            window.animation.setTheme('light');
-        }
+    updateSky() {
+        if (!this.animation) return;
+        const skyState = this.interpolateSkyState(this.currentValue);
+        this.animation.setTimeOfDay(skyState);
     }
 
-    enableDarkMode() {
-        this.isLightMode = false;
-        document.body.classList.remove('light-mode');
-        if (this.icon) {
-            this.icon.className = 'fas fa-moon';
-            this.icon.style.color = '';
+    interpolateSkyState(value) {
+        const keyframes = Object.keys(this.skyKeyframes).map(Number).sort((a, b) => a - b);
+
+        let lowerKey = keyframes[0];
+        let upperKey = keyframes[keyframes.length - 1];
+
+        for (let i = 0; i < keyframes.length - 1; i++) {
+            if (value >= keyframes[i] && value <= keyframes[i + 1]) {
+                lowerKey = keyframes[i];
+                upperKey = keyframes[i + 1];
+                break;
+            }
         }
-        localStorage.setItem('theme', 'dark');
-        if (window.animation) {
-            window.animation.setTheme('dark');
-        }
+
+        const lowerState = this.skyKeyframes[lowerKey];
+        const upperState = this.skyKeyframes[upperKey];
+
+        const range = upperKey - lowerKey;
+        const t = range === 0 ? 0 : (value - lowerKey) / range;
+
+        const skyTop = this.interpolateColor(lowerState.sky[0], upperState.sky[0], t);
+        const skyBottom = this.interpolateColor(lowerState.sky[1], upperState.sky[1], t);
+        const stars = lowerState.stars + (upperState.stars - lowerState.stars) * t;
+        const clouds = lowerState.clouds + (upperState.clouds - lowerState.clouds) * t;
+
+        return { skyTop, skyBottom, stars, clouds, value };
+    }
+
+    interpolateColor(color1, color2, t) {
+        const c1 = this.hexToRgb(color1);
+        const c2 = this.hexToRgb(color2);
+        const r = Math.round(c1.r + (c2.r - c1.r) * t);
+        const g = Math.round(c1.g + (c2.g - c1.g) * t);
+        const b = Math.round(c1.b + (c2.b - c1.b) * t);
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    hexToRgb(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 0, g: 0, b: 0 };
+    }
+
+    setAnimation(animation) {
+        this.animation = animation;
+        this.updateSky();
     }
 
     getTheme() {
-        return this.isLightMode ? 'light' : 'dark';
+        return this.currentValue > 50 ? 'light' : 'dark';
     }
 }
 
@@ -71,7 +188,9 @@ class SkyAnimation {
 
         // Shared properties
         this.rotationAngle = 0;
-        this.rotationSpeed = this.isMobile ? 0.002 : 0.0005;
+        // Random direction on each page load
+        const baseSpeed = this.isMobile ? 0.002 : 0.0005;
+        this.rotationSpeed = Math.random() < 0.5 ? baseSpeed : -baseSpeed;
 
         // Dark mode: stars and constellations
         this.stars = [];
@@ -79,16 +198,62 @@ class SkyAnimation {
         this.numStars = this.isMobile ? 120 : 400;
         this.shootingStars = [];
 
-        // Light mode: clouds
+        // Light mode: clouds (image-based)
         this.clouds = [];
-        this.numClouds = this.isMobile ? 18 : 55;
+        this.cloudImages = {};
+        this.cloudImagesLoaded = false;
         this.contrails = []; // Plane streaks
+        this.butterflies = []; // Flying butterflies
 
+        // Cloud image definitions - categorized by type
+        this.cloudAssets = {
+            large: ['Cloud_0001.jpg', 'Cloud_0010.jpg', 'Cloud_0062.jpg'],
+            medium: ['Cloud_0050.jpg', 'Cloud_0015.jpg', 'Cloud_0025.jpg', 'Cloud_0035.jpg', 'Cloud_0045.jpg'],
+            wispy: ['Cloud_0091.jpg'],
+            hazy: ['Cloud_0091.jpg']
+        };
+
+        // Time of day mode
+        this.timeOfDayState = null; // null = use theme, object = use time-based rendering
+
+        this.preloadCloudImages();
         this.init();
         this.setupEventListeners();
         this.animate();
 
         window.animation = this;
+    }
+
+    preloadCloudImages() {
+        const allImages = [
+            ...this.cloudAssets.large,
+            ...this.cloudAssets.medium,
+            ...this.cloudAssets.wispy,
+            ...this.cloudAssets.hazy
+        ];
+
+        let loadedCount = 0;
+        const totalImages = allImages.length;
+
+        allImages.forEach(filename => {
+            const img = new Image();
+            img.onload = () => {
+                this.cloudImages[filename] = img;
+                loadedCount++;
+                if (loadedCount === totalImages) {
+                    this.cloudImagesLoaded = true;
+                    this.createClouds(); // Recreate clouds once images are loaded
+                }
+            };
+            img.onerror = () => {
+                console.warn('Failed to load cloud image:', filename);
+                loadedCount++;
+                if (loadedCount === totalImages) {
+                    this.cloudImagesLoaded = true;
+                }
+            };
+            img.src = `clouds/${filename}`;
+        });
     }
 
     init() {
@@ -103,6 +268,12 @@ class SkyAnimation {
         if (theme === 'light') {
             this.createClouds();
         }
+        // Clear time of day mode when theme changes
+        this.timeOfDayState = null;
+    }
+
+    setTimeOfDay(state) {
+        this.timeOfDayState = state;
     }
 
     resizeCanvas() {
@@ -216,7 +387,7 @@ class SkyAnimation {
 
     createShootingStar(clickX, clickY) {
         const angle = Math.random() * Math.PI * 2;
-        const speed = this.isMobile ? (0.7 + Math.random() * 0.5) : (0.25 + Math.random() * 0.35);
+        const speed = this.isMobile ? (0.9 + Math.random() * 0.6) : (0.35 + Math.random() * 0.4);
         const length = this.isMobile ? (70 + Math.random() * 50) : (120 + Math.random() * 80);
 
         const colorType = Math.random();
@@ -229,93 +400,401 @@ class SkyAnimation {
         this.shootingStars.push({
             x: clickX, y: clickY, startX: clickX, startY: clickY,
             vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed,
-            length, thickness: 0.7 + Math.random() * 0.5,
-            opacity: 0.85, life: 1,
+            length, thickness: 0.9 + Math.random() * 0.6,
+            opacity: 0.9, life: 1,
             fadeRate: this.isMobile ? 0.0025 : 0.0004,
             color, scale: 1
         });
     }
 
-    // ========== LIGHT MODE: Clouds ==========
+    // ========== LIGHT MODE: Clouds (Image-based) ==========
 
     createClouds() {
         this.clouds = [];
+
+        // Don't create clouds until images are loaded
+        if (!this.cloudImagesLoaded) return;
+
         const maxDimension = Math.max(this.canvas.width, this.canvas.height);
 
-        // First, add a few massive anchor clouds scattered around
-        const numMassiveClouds = 2 + Math.floor(Math.random() * 2); // 2-3 massive clouds
-        for (let i = 0; i < numMassiveClouds; i++) {
-            const angle = Math.random() * Math.PI * 2;
-            const radius = 100 + Math.random() * maxDimension * 0.4;
-            this.addCloud(
-                Math.cos(angle) * radius,
-                Math.sin(angle) * radius,
-                'massive'
-            );
+        // Create 3-5 cloud clusters at random positions around the sky
+        const numClusters = this.isMobile ? 3 : (4 + Math.floor(Math.random() * 2));
+        const clusters = [];
+
+        for (let c = 0; c < numClusters; c++) {
+            const clusterAngle = (c / numClusters) * Math.PI * 2 + (Math.random() - 0.5) * 1.2;
+            const clusterRadius = 150 + Math.random() * maxDimension * 0.35;
+
+            clusters.push({
+                x: Math.cos(clusterAngle) * clusterRadius,
+                y: Math.sin(clusterAngle) * clusterRadius,
+                size: 150 + Math.random() * 200
+            });
         }
 
-        // Create dense cloud clusters - areas with many clouds bunched together
-        const numDenseClusters = 3 + Math.floor(Math.random() * 2); // More dense clusters
-        for (let c = 0; c < numDenseClusters; c++) {
-            const clusterAngle = Math.random() * Math.PI * 2;
-            const clusterRadius = 80 + Math.random() * maxDimension * 0.35;
-            const clusterX = Math.cos(clusterAngle) * clusterRadius;
-            const clusterY = Math.sin(clusterAngle) * clusterRadius;
-            const clusterSize = 80 + Math.random() * 120; // Tighter clusters
-            const cloudCount = 8 + Math.floor(Math.random() * 8); // More clouds per cluster
-
-            for (let i = 0; i < cloudCount; i++) {
+        // For each cluster, add image-based clouds
+        clusters.forEach((cluster) => {
+            // Large clouds (1-2 per cluster)
+            const numLarge = this.isMobile ? 1 : (1 + Math.floor(Math.random() * 2));
+            for (let i = 0; i < numLarge; i++) {
                 const offsetAngle = Math.random() * Math.PI * 2;
-                // More clouds closer to center of cluster
-                const offsetDist = Math.pow(Math.random(), 1.5) * clusterSize;
-                this.addCloud(
-                    clusterX + Math.cos(offsetAngle) * offsetDist,
-                    clusterY + Math.sin(offsetAngle) * offsetDist,
-                    'dense'
+                const offsetDist = Math.random() * cluster.size * 0.3;
+                this.addImageCloud(
+                    cluster.x + Math.cos(offsetAngle) * offsetDist,
+                    cluster.y + Math.sin(offsetAngle) * offsetDist,
+                    'large'
                 );
             }
-        }
 
-        // Create medium clusters
-        const numMediumClusters = 2 + Math.floor(Math.random() * 2);
-        for (let c = 0; c < numMediumClusters; c++) {
-            const clusterAngle = Math.random() * Math.PI * 2;
-            const clusterRadius = 150 + Math.random() * maxDimension * 0.45;
-            const clusterX = Math.cos(clusterAngle) * clusterRadius;
-            const clusterY = Math.sin(clusterAngle) * clusterRadius;
-            const clusterSize = 80 + Math.random() * 100;
-            const cloudCount = 4 + Math.floor(Math.random() * 4);
-
-            for (let i = 0; i < cloudCount; i++) {
+            // Medium clouds
+            const numMedium = this.isMobile ? 2 : (3 + Math.floor(Math.random() * 3));
+            for (let i = 0; i < numMedium; i++) {
                 const offsetAngle = Math.random() * Math.PI * 2;
-                const offsetDist = Math.random() * clusterSize;
-                this.addCloud(
-                    clusterX + Math.cos(offsetAngle) * offsetDist,
-                    clusterY + Math.sin(offsetAngle) * offsetDist,
+                const offsetDist = Math.random() * cluster.size * 0.6;
+                this.addImageCloud(
+                    cluster.x + Math.cos(offsetAngle) * offsetDist,
+                    cluster.y + Math.sin(offsetAngle) * offsetDist,
                     'medium'
                 );
             }
-        }
+        });
 
-        // Add sparse scattered clouds - fewer and no tiny dots
-        const scatteredCount = Math.max(0, Math.floor((this.numClouds - this.clouds.length) * 0.6));
-        for (let i = 0; i < scatteredCount; i++) {
+        // Add wispy clouds between clusters
+        const numWispy = this.isMobile ? 2 : 5;
+        for (let i = 0; i < numWispy; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 100 + Math.random() * maxDimension * 0.7;
-
-            // Only medium-sized scattered clouds, no tiny dots
-            const typeRoll = Math.random();
-            let type;
-            if (typeRoll < 0.4) type = 'wisp';
-            else if (typeRoll < 0.7) type = 'scattered';
-            else type = 'lone';
-
-            this.addCloud(
+            const radius = 100 + Math.random() * maxDimension * 0.5;
+            this.addImageCloud(
                 Math.cos(angle) * radius,
                 Math.sin(angle) * radius,
-                type
+                'wispy'
             );
         }
+
+        // Add hazy background clouds
+        const numHazy = this.isMobile ? 2 : 4;
+        for (let i = 0; i < numHazy; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 200 + Math.random() * maxDimension * 0.4;
+            this.addImageCloud(
+                Math.cos(angle) * radius,
+                Math.sin(angle) * radius,
+                'hazy'
+            );
+        }
+
+        // Sort clouds by depth (furthest first)
+        this.clouds.sort((a, b) => a.depth - b.depth);
+    }
+
+    addImageCloud(x, y, type) {
+        // Select a random image from the appropriate category
+        let imageList;
+        let scale, opacity, depth;
+
+        if (type === 'large') {
+            imageList = this.cloudAssets.large;
+            scale = this.isMobile ? (0.15 + Math.random() * 0.1) : (0.3 + Math.random() * 0.2);
+            opacity = 0.9 + Math.random() * 0.1;
+            depth = 0.6 + Math.random() * 0.4;
+        } else if (type === 'medium') {
+            imageList = this.cloudAssets.medium;
+            scale = this.isMobile ? (0.08 + Math.random() * 0.07) : (0.15 + Math.random() * 0.15);
+            opacity = 0.8 + Math.random() * 0.15;
+            depth = 0.4 + Math.random() * 0.4;
+        } else if (type === 'wispy') {
+            imageList = this.cloudAssets.wispy;
+            scale = this.isMobile ? (0.1 + Math.random() * 0.08) : (0.2 + Math.random() * 0.15);
+            opacity = 0.4 + Math.random() * 0.3;
+            depth = 0.2 + Math.random() * 0.3;
+        } else { // hazy
+            imageList = this.cloudAssets.hazy;
+            scale = this.isMobile ? (0.2 + Math.random() * 0.15) : (0.4 + Math.random() * 0.3);
+            opacity = 0.25 + Math.random() * 0.2;
+            depth = 0.1 + Math.random() * 0.2;
+        }
+
+        const imageName = imageList[Math.floor(Math.random() * imageList.length)];
+        const image = this.cloudImages[imageName];
+
+        if (!image) return;
+
+        this.clouds.push({
+            x: x,
+            y: y,
+            originalX: x,
+            originalY: y,
+            image: image,
+            scale: scale,
+            opacity: opacity,
+            depth: depth,
+            rotation: (Math.random() - 0.5) * 0.3, // Slight rotation variation
+            flipX: Math.random() > 0.5, // Random horizontal flip for variety
+            driftX: (Math.random() - 0.5) * 0.005,
+            driftY: (Math.random() - 0.5) * 0.003,
+            pulsePhase: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.0003 + Math.random() * 0.0002
+        });
+    }
+
+    addNaturalCloud(x, y, type) {
+        const now = Date.now();
+        let cloud = {
+            x: x,
+            y: y,
+            originalX: x,
+            originalY: y,
+            depth: 0.3 + Math.random() * 0.7,
+            tint: { r: 255, g: 255, b: 255 },
+            morphPhase: Math.random() * Math.PI * 2,
+            morphSpeed: 0.0002 + Math.random() * 0.0003,
+            driftX: (Math.random() - 0.5) * 0.008,
+            driftY: (Math.random() - 0.5) * 0.005,
+            pulsePhase: Math.random() * Math.PI * 2,
+            pulseSpeed: 0.0004 + Math.random() * 0.0003,
+            birthTime: now,
+            puffs: []
+        };
+
+        if (type === 'large') {
+            cloud.opacity = 0.95;
+            const baseWidth = 220 + Math.random() * 180;
+            const baseHeight = 200 + Math.random() * 140;
+
+            // Create irregular lobe structure for cauliflower shape
+            const numLobes = 6 + Math.floor(Math.random() * 5);
+            const lobes = [];
+
+            for (let l = 0; l < numLobes; l++) {
+                const lobeAngle = (l / numLobes) * Math.PI * 2 + (Math.random() - 0.5) * 0.8;
+                const lobeDist = 0.35 + Math.random() * 0.45;
+                const lobeSize = 0.4 + Math.random() * 0.6;
+                lobes.push({
+                    x: Math.cos(lobeAngle) * lobeDist * baseWidth * 0.45,
+                    y: Math.sin(lobeAngle) * lobeDist * baseHeight * 0.4 - baseHeight * 0.12,
+                    size: lobeSize,
+                    angle: lobeAngle
+                });
+            }
+
+            // Main body puffs around each lobe
+            lobes.forEach(lobe => {
+                const puffsPerLobe = 6 + Math.floor(Math.random() * 5);
+                for (let p = 0; p < puffsPerLobe; p++) {
+                    const puffAngle = Math.random() * Math.PI * 2;
+                    const puffDist = Math.random() * 40 * lobe.size;
+                    const size = (28 + Math.random() * 38) * lobe.size;
+                    const isOuter = puffDist > 25 * lobe.size;
+
+                    cloud.puffs.push({
+                        offsetX: lobe.x + Math.cos(puffAngle) * puffDist,
+                        offsetY: lobe.y + Math.sin(puffAngle) * puffDist,
+                        baseSize: size,
+                        opacity: isOuter ? (0.7 + Math.random() * 0.25) : (0.85 + Math.random() * 0.15),
+                        morphOffset: Math.random() * Math.PI * 2,
+                        puffType: isOuter ? 'edge' : 'body',
+                        shadowAmount: 0.1 + (lobe.y / baseHeight) * 0.15 // More shadow on bottom
+                    });
+                }
+
+                // Add wispy trailing bits at some lobe edges
+                if (Math.random() > 0.4) {
+                    const numWisps = 2 + Math.floor(Math.random() * 3);
+                    for (let w = 0; w < numWisps; w++) {
+                        const wispAngle = lobe.angle + (Math.random() - 0.5) * 0.8;
+                        const wispDist = 45 * lobe.size + Math.random() * 30;
+                        const wispSize = 8 + Math.random() * 15;
+                        cloud.puffs.push({
+                            offsetX: lobe.x + Math.cos(wispAngle) * wispDist,
+                            offsetY: lobe.y + Math.sin(wispAngle) * wispDist,
+                            baseSize: wispSize,
+                            opacity: 0.3 + Math.random() * 0.3,
+                            morphOffset: Math.random() * Math.PI * 2,
+                            puffType: 'wisp',
+                            shadowAmount: 0
+                        });
+                    }
+                }
+
+                // Add cotton-candy tufts at some edges
+                if (Math.random() > 0.5) {
+                    const numTufts = 1 + Math.floor(Math.random() * 2);
+                    for (let t = 0; t < numTufts; t++) {
+                        const tuftAngle = lobe.angle + (Math.random() - 0.5) * 0.5;
+                        const tuftDist = 35 * lobe.size + Math.random() * 25;
+                        // Tufts are clusters of small puffs
+                        for (let tp = 0; tp < 4; tp++) {
+                            const tpAngle = Math.random() * Math.PI * 2;
+                            const tpDist = Math.random() * 12;
+                            cloud.puffs.push({
+                                offsetX: lobe.x + Math.cos(tuftAngle) * tuftDist + Math.cos(tpAngle) * tpDist,
+                                offsetY: lobe.y + Math.sin(tuftAngle) * tuftDist + Math.sin(tpAngle) * tpDist,
+                                baseSize: 10 + Math.random() * 14,
+                                opacity: 0.6 + Math.random() * 0.3,
+                                morphOffset: Math.random() * Math.PI * 2,
+                                puffType: 'tuft',
+                                shadowAmount: 0.05
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Dense center fill with varied opacity for internal texture
+            const centerPuffs = 18 + Math.floor(Math.random() * 12);
+            for (let i = 0; i < centerPuffs; i++) {
+                const px = (Math.random() - 0.5) * baseWidth * 0.45;
+                const py = (Math.random() - 0.5) * baseHeight * 0.35 - baseHeight * 0.08;
+                const size = 32 + Math.random() * 45;
+                // Vary opacity to create internal depth/shadows
+                const internalShadow = Math.random() > 0.7 ? 0.15 : 0;
+
+                cloud.puffs.push({
+                    offsetX: px,
+                    offsetY: py,
+                    baseSize: size,
+                    opacity: 0.8 + Math.random() * 0.2 - internalShadow,
+                    morphOffset: Math.random() * Math.PI * 2,
+                    puffType: 'core',
+                    shadowAmount: 0.08 + (py / baseHeight) * 0.12 + internalShadow
+                });
+            }
+
+        } else if (type === 'medium') {
+            cloud.opacity = 0.9;
+            const baseWidth = 110 + Math.random() * 90;
+            const baseHeight = 90 + Math.random() * 70;
+
+            const numLobes = 3 + Math.floor(Math.random() * 3);
+            for (let l = 0; l < numLobes; l++) {
+                const lobeAngle = (l / numLobes) * Math.PI * 2 + (Math.random() - 0.5) * 0.9;
+                const lobeDist = 0.28 + Math.random() * 0.4;
+                const lobeX = Math.cos(lobeAngle) * lobeDist * baseWidth * 0.45;
+                const lobeY = Math.sin(lobeAngle) * lobeDist * baseHeight * 0.38 - 12;
+
+                const puffsPerLobe = 4 + Math.floor(Math.random() * 4);
+                for (let p = 0; p < puffsPerLobe; p++) {
+                    const puffAngle = Math.random() * Math.PI * 2;
+                    const puffDist = Math.random() * 28;
+                    const size = 18 + Math.random() * 28;
+                    const isOuter = puffDist > 18;
+
+                    cloud.puffs.push({
+                        offsetX: lobeX + Math.cos(puffAngle) * puffDist,
+                        offsetY: lobeY + Math.sin(puffAngle) * puffDist,
+                        baseSize: size,
+                        opacity: isOuter ? (0.65 + Math.random() * 0.25) : (0.8 + Math.random() * 0.2),
+                        morphOffset: Math.random() * Math.PI * 2,
+                        puffType: isOuter ? 'edge' : 'body',
+                        shadowAmount: 0.08 + (lobeY / baseHeight) * 0.1
+                    });
+                }
+
+                // Occasional wisps
+                if (Math.random() > 0.6) {
+                    const wispAngle = lobeAngle + (Math.random() - 0.5) * 0.6;
+                    const wispDist = 32 + Math.random() * 20;
+                    cloud.puffs.push({
+                        offsetX: lobeX + Math.cos(wispAngle) * wispDist,
+                        offsetY: lobeY + Math.sin(wispAngle) * wispDist,
+                        baseSize: 7 + Math.random() * 10,
+                        opacity: 0.25 + Math.random() * 0.25,
+                        morphOffset: Math.random() * Math.PI * 2,
+                        puffType: 'wisp',
+                        shadowAmount: 0
+                    });
+                }
+            }
+
+            // Center fill
+            for (let i = 0; i < 7; i++) {
+                const size = 22 + Math.random() * 28;
+                cloud.puffs.push({
+                    offsetX: (Math.random() - 0.5) * 35,
+                    offsetY: (Math.random() - 0.5) * 28 - 6,
+                    baseSize: size,
+                    opacity: 0.85 + Math.random() * 0.15,
+                    morphOffset: Math.random() * Math.PI * 2,
+                    puffType: 'core',
+                    shadowAmount: 0.1
+                });
+            }
+
+        } else if (type === 'wispy') {
+            cloud.opacity = 0.35 + Math.random() * 0.2;
+            const length = 130 + Math.random() * 110;
+            const angle = Math.random() * Math.PI;
+            const numPuffs = 10 + Math.floor(Math.random() * 6);
+
+            for (let i = 0; i < numPuffs; i++) {
+                const t = i / (numPuffs - 1);
+                const size = 6 + Math.random() * 12;
+                // Vary position more for wispy look
+                const perpOffset = (Math.random() - 0.5) * 20 * (1 - Math.abs(t - 0.5) * 2);
+                cloud.puffs.push({
+                    offsetX: Math.cos(angle) * (t - 0.5) * length + Math.sin(angle) * perpOffset,
+                    offsetY: Math.sin(angle) * (t - 0.5) * length * 0.25 - Math.cos(angle) * perpOffset,
+                    baseSize: size,
+                    opacity: 0.3 + Math.random() * 0.4,
+                    morphOffset: Math.random() * Math.PI * 2,
+                    puffType: 'wisp',
+                    shadowAmount: 0
+                });
+            }
+
+        } else if (type === 'small') {
+            cloud.opacity = 0.8 + Math.random() * 0.15;
+            const numPuffs = 7 + Math.floor(Math.random() * 5);
+
+            for (let i = 0; i < numPuffs; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * 22;
+                const size = 12 + Math.random() * 18;
+                cloud.puffs.push({
+                    offsetX: Math.cos(angle) * dist,
+                    offsetY: Math.sin(angle) * dist * 0.7 - 6,
+                    baseSize: size,
+                    opacity: 0.65 + Math.random() * 0.35,
+                    morphOffset: Math.random() * Math.PI * 2,
+                    puffType: dist > 14 ? 'edge' : 'body',
+                    shadowAmount: 0.08
+                });
+            }
+
+            // Add a wisp or two
+            if (Math.random() > 0.5) {
+                const wispAngle = Math.random() * Math.PI * 2;
+                cloud.puffs.push({
+                    offsetX: Math.cos(wispAngle) * 28,
+                    offsetY: Math.sin(wispAngle) * 20,
+                    baseSize: 6 + Math.random() * 8,
+                    opacity: 0.2 + Math.random() * 0.2,
+                    morphOffset: Math.random() * Math.PI * 2,
+                    puffType: 'wisp',
+                    shadowAmount: 0
+                });
+            }
+
+        } else if (type === 'hazy') {
+            cloud.opacity = 0.22 + Math.random() * 0.13;
+            cloud.depth = 0.1 + Math.random() * 0.2;
+            const numPuffs = 6 + Math.floor(Math.random() * 4);
+
+            for (let i = 0; i < numPuffs; i++) {
+                const size = 55 + Math.random() * 65;
+                cloud.puffs.push({
+                    offsetX: (Math.random() - 0.5) * 130,
+                    offsetY: (Math.random() - 0.5) * 65,
+                    baseSize: size,
+                    opacity: 0.3 + Math.random() * 0.3,
+                    morphOffset: Math.random() * Math.PI * 2,
+                    puffType: 'haze',
+                    shadowAmount: 0.05
+                });
+            }
+        }
+
+        this.clouds.push(cloud);
     }
 
     addCloud(x, y, distribution) {
@@ -376,6 +855,22 @@ class SkyAnimation {
                 puffSizeRange = { min: 18, max: 40 };
                 curve = (Math.random() - 0.5) * 0.5;
             }
+        } else if (distribution === 'swirl') {
+            // Long wispy swirl clouds with trailing tails
+            // These have a fluffy head and a long fading tail
+            numPuffs = 10 + Math.floor(Math.random() * 8); // More puffs for the tail
+            baseLength = 200 + Math.random() * 180; // Very long
+            baseOpacity = 0.5 + Math.random() * 0.3;
+            puffSizeRange = { min: 8, max: 50, isSwirl: true }; // Flag for special puff generation
+            // Higher curve to follow circular motion - always curves in swirl direction
+            curve = 0.4 + Math.random() * 0.5; // Positive curve for consistent swirl direction
+        } else if (distribution === 'cumulus') {
+            // Natural puffy cumulus clouds - round and billowy
+            numPuffs = 8 + Math.floor(Math.random() * 6); // Many overlapping puffs
+            baseLength = 60 + Math.random() * 50; // Shorter, rounder shape
+            baseOpacity = 0.7 + Math.random() * 0.25;
+            puffSizeRange = { min: 30, max: 70, isCumulus: true }; // Flag for cumulus puff generation
+            curve = (Math.random() - 0.5) * 0.2; // Minimal curve for round shape
         } else {
             // Default variety
             if (cloudType < 0.2) {
@@ -415,31 +910,60 @@ class SkyAnimation {
 
         // Generate puffs with organic placement and varied opacity
         const puffs = [];
+        const isSwirl = puffSizeRange.isSwirl;
+        const isCumulus = puffSizeRange.isCumulus;
+
         for (let p = 0; p < numPuffs; p++) {
             const t = numPuffs > 1 ? p / (numPuffs - 1) : 0.5;
             const offsetVariance = puffSizeRange.max * 0.7;
-            // More irregular placement
-            const irregularity = 0.25 + Math.random() * 0.15;
-            const actualT = t + (Math.random() - 0.5) * irregularity;
-            const offset = (Math.random() - 0.5) * offsetVariance * (0.8 + Math.random() * 0.4);
 
-            // Calculate distance from cloud center (0 = center, 1 = edge)
-            const distFromCenter = Math.sqrt(
-                Math.pow((actualT - 0.5) * 2, 2) +
-                Math.pow(offset / offsetVariance, 2)
-            );
+            let actualT, offset, puffSize, puffOpacity;
 
-            // Puffs closer to center are more opaque, edges fade out
-            // Add random variation too
-            const centerBoost = Math.max(0, 1 - distFromCenter * 0.7);
-            const randomVariation = 0.5 + Math.random() * 0.5;
-            const puffOpacity = (0.3 + centerBoost * 0.7) * randomVariation;
+            if (isCumulus) {
+                // Cumulus clouds: irregular billowy arrangement like real clouds
+                // Random scattered positions with more puffs overlapping
+                actualT = 0.3 + Math.random() * 0.4; // Spread along cloud body
+                offset = (Math.random() - 0.5) * offsetVariance * 0.8;
+
+                // Vary sizes significantly for natural look
+                const sizeVariation = 0.5 + Math.random() * 0.8;
+                puffSize = (puffSizeRange.min + Math.random() * (puffSizeRange.max - puffSizeRange.min)) * sizeVariation;
+
+                // Some puffs larger and brighter (the billowy tops)
+                if (Math.random() > 0.6) {
+                    puffSize *= 1.3;
+                    offset *= 0.5; // Keep big ones more central
+                }
+                puffOpacity = 0.5 + Math.random() * 0.4;
+            } else if (isSwirl) {
+                // Swirl clouds: fluffy head transitioning to wispy tail
+                actualT = t + (Math.random() - 0.5) * 0.1;
+                const tailFactor = 1 - t;
+                offset = (Math.random() - 0.5) * offsetVariance * tailFactor * 0.6;
+                const headSize = puffSizeRange.max;
+                const tailSize = puffSizeRange.min;
+                puffSize = headSize * Math.pow(tailFactor, 0.7) + tailSize * (1 - Math.pow(tailFactor, 0.7));
+                puffSize *= (0.8 + Math.random() * 0.4);
+                puffOpacity = (0.8 * Math.pow(tailFactor, 0.5) + 0.2) * (0.7 + Math.random() * 0.3);
+            } else {
+                const irregularity = 0.25 + Math.random() * 0.15;
+                actualT = t + (Math.random() - 0.5) * irregularity;
+                offset = (Math.random() - 0.5) * offsetVariance * (0.8 + Math.random() * 0.4);
+                const distFromCenter = Math.sqrt(
+                    Math.pow((actualT - 0.5) * 2, 2) +
+                    Math.pow(offset / offsetVariance, 2)
+                );
+                const centerBoost = Math.max(0, 1 - distFromCenter * 0.7);
+                const randomVariation = 0.5 + Math.random() * 0.5;
+                puffOpacity = (0.3 + centerBoost * 0.7) * randomVariation;
+                puffSize = puffSizeRange.min + Math.random() * (puffSizeRange.max - puffSizeRange.min)
+                          + Math.sin(t * Math.PI) * (puffSizeRange.max * 0.2) * (0.7 + Math.random() * 0.6);
+            }
 
             puffs.push({
                 t: actualT,
                 offset: offset,
-                size: puffSizeRange.min + Math.random() * (puffSizeRange.max - puffSizeRange.min)
-                      + Math.sin(t * Math.PI) * (puffSizeRange.max * 0.2) * (0.7 + Math.random() * 0.6),
+                size: puffSize,
                 opacity: puffOpacity
             });
         }
@@ -483,6 +1007,55 @@ class SkyAnimation {
             thickness: 1.5 + Math.random() * 1.5,
             opacity: 0.8,
             scale: 1
+        });
+    }
+
+    createButterfly(clickX, clickY) {
+        // Pick a random direction to fly off screen
+        const edgeAngles = [
+            Math.random() * Math.PI * 0.5 - Math.PI * 0.75, // Top-ish
+            Math.random() * Math.PI * 0.5 - Math.PI * 0.25, // Right-ish
+            Math.random() * Math.PI * 0.5 + Math.PI * 0.25, // Bottom-ish
+            Math.random() * Math.PI * 0.5 + Math.PI * 0.75  // Left-ish
+        ];
+        const targetAngle = edgeAngles[Math.floor(Math.random() * edgeAngles.length)];
+
+        // Cute pastel butterfly colors
+        const colors = [
+            { primary: '#FFB6C1', secondary: '#FF69B4', accent: '#FFC0CB' }, // Pink
+            { primary: '#E6E6FA', secondary: '#DDA0DD', accent: '#D8BFD8' }, // Lavender
+            { primary: '#87CEEB', secondary: '#6BB3D9', accent: '#ADD8E6' }, // Sky blue
+            { primary: '#FFDAB9', secondary: '#FFE4B5', accent: '#FFEC8B' }, // Peach
+            { primary: '#F0E68C', secondary: '#EEE8AA', accent: '#FFFACD' }, // Butter yellow
+            { primary: '#E0BBE4', secondary: '#D291BC', accent: '#FEC8D8' }  // Orchid
+        ];
+        const colorScheme = colors[Math.floor(Math.random() * colors.length)];
+
+        const speed = this.isMobile ? (0.9 + Math.random() * 0.5) : (0.5 + Math.random() * 0.4);
+        const size = this.isMobile ? (12 + Math.random() * 5) : (10 + Math.random() * 6);
+
+        // More opaque on mobile for visibility
+        const baseOpacity = this.isMobile ? 0.85 : 0.7;
+
+        this.butterflies.push({
+            x: clickX,
+            y: clickY,
+            vx: Math.cos(targetAngle) * speed,
+            vy: Math.sin(targetAngle) * speed,
+            size: size,
+            baseOpacity: baseOpacity,
+            colors: colorScheme,
+            wingPhase: Math.random() * Math.PI * 2,
+            wingSpeed: 0.2 + Math.random() * 0.15,
+            wobblePhase: Math.random() * Math.PI * 2,
+            wobbleAmount: 0.3 + Math.random() * 0.2,
+            // Curved flight path parameters - more pronounced meandering
+            curvePhase: Math.random() * Math.PI * 2,
+            curveSpeed: 0.015 + Math.random() * 0.01,
+            curveAmount: 0.04 + Math.random() * 0.03,
+            rotation: targetAngle,
+            opacity: 1,
+            birthTime: Date.now()
         });
     }
 
@@ -544,18 +1117,18 @@ class SkyAnimation {
         const isInteractive = target?.tagName === 'A' ||
             target?.tagName === 'BUTTON' ||
             target?.tagName === 'IMG' ||
+            target?.tagName === 'INPUT' ||
             target?.closest('a') ||
             target?.closest('button') ||
             target?.closest('.icon-link') ||
             target?.closest('.indicator') ||
-            target?.closest('.theme-toggle');
+            target?.closest('.theme-toggle-container') ||
+            target?.closest('.theme-toggle-btn');
 
-        // Reverse rotation on any click
-        this.rotationSpeed = -this.rotationSpeed;
-
+        // Create effects on non-interactive clicks
         if (!isInteractive) {
             if (this.themeController.getTheme() === 'light') {
-                this.createContrail(x, y);
+                this.createButterfly(x, y);
             } else {
                 this.createShootingStar(x, y);
             }
@@ -565,83 +1138,218 @@ class SkyAnimation {
     // ========== Animation Loop ==========
 
     animate() {
-        const isLight = this.themeController.getTheme() === 'light';
-
-        // Clear with appropriate background
-        if (isLight) {
-            // Natural sky with rich variation
-            // Base gradient
-            const gradient = this.ctx.createRadialGradient(
-                this.centerX * 0.35, this.centerY * 0.25, 0,
-                this.centerX, this.centerY, Math.max(this.canvas.width, this.canvas.height) * 1.1
-            );
-            gradient.addColorStop(0, '#F0F8FC');      // Almost white bright spot
-            gradient.addColorStop(0.08, '#DCF0FA');   // Very pale blue
-            gradient.addColorStop(0.18, '#C4E6F7');   // Pale sky
-            gradient.addColorStop(0.3, '#A8D8F2');    // Light sky blue
-            gradient.addColorStop(0.45, '#8CCAEC');   // Soft blue
-            gradient.addColorStop(0.6, '#70BCE4');    // Medium sky blue
-            gradient.addColorStop(0.75, '#58AEDC');   // Richer blue
-            gradient.addColorStop(0.9, '#42A0D4');    // Deeper blue
-            gradient.addColorStop(1, '#3090C8');      // Blue at far edges
-            this.ctx.fillStyle = gradient;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-            // Secondary warm bright spot (like sun glow area)
-            const gradient2 = this.ctx.createRadialGradient(
-                this.canvas.width * 0.9, this.canvas.height * 0.15, 0,
-                this.canvas.width * 0.9, this.canvas.height * 0.15, this.canvas.width * 0.55
-            );
-            gradient2.addColorStop(0, 'rgba(255, 250, 240, 0.35)');
-            gradient2.addColorStop(0.2, 'rgba(240, 245, 255, 0.25)');
-            gradient2.addColorStop(0.5, 'rgba(200, 225, 250, 0.15)');
-            gradient2.addColorStop(1, 'rgba(180, 210, 240, 0)');
-            this.ctx.fillStyle = gradient2;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-            // Cool shadow area
-            const gradient3 = this.ctx.createRadialGradient(
-                this.canvas.width * 0.1, this.canvas.height * 0.85, 0,
-                this.canvas.width * 0.1, this.canvas.height * 0.85, this.canvas.width * 0.4
-            );
-            gradient3.addColorStop(0, 'rgba(100, 160, 210, 0.2)');
-            gradient3.addColorStop(0.5, 'rgba(120, 175, 220, 0.1)');
-            gradient3.addColorStop(1, 'rgba(140, 190, 230, 0)');
-            this.ctx.fillStyle = gradient3;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-            // Additional variation patch
-            const gradient4 = this.ctx.createRadialGradient(
-                this.canvas.width * 0.6, this.canvas.height * 0.5, 0,
-                this.canvas.width * 0.6, this.canvas.height * 0.5, this.canvas.width * 0.35
-            );
-            gradient4.addColorStop(0, 'rgba(190, 225, 250, 0.2)');
-            gradient4.addColorStop(0.6, 'rgba(170, 210, 245, 0.08)');
-            gradient4.addColorStop(1, 'rgba(150, 200, 240, 0)');
-            this.ctx.fillStyle = gradient4;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-            // Subtle haze near edges
-            const gradient5 = this.ctx.createRadialGradient(
-                this.centerX, this.centerY, Math.max(this.canvas.width, this.canvas.height) * 0.5,
-                this.centerX, this.centerY, Math.max(this.canvas.width, this.canvas.height) * 1.2
-            );
-            gradient5.addColorStop(0, 'rgba(255, 255, 255, 0)');
-            gradient5.addColorStop(0.5, 'rgba(200, 220, 240, 0.05)');
-            gradient5.addColorStop(1, 'rgba(180, 200, 230, 0.12)');
-            this.ctx.fillStyle = gradient5;
-            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
-
-            this.animateClouds();
-            this.animateContrails();
+        // Check if we're in time-of-day mode
+        if (this.timeOfDayState) {
+            this.animateTimeOfDay();
         } else {
-            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.animateStars();
-            this.animateShootingStars();
+            const isLight = this.themeController.getTheme() === 'light';
+
+            // Clear with appropriate background
+            if (isLight) {
+                this.drawDaySky();
+                this.animateClouds();
+                this.animateContrails();
+                this.animateButterflies();
+            } else {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                this.animateStars();
+                this.animateShootingStars();
+            }
         }
 
         this.rotationAngle += this.rotationSpeed;
         requestAnimationFrame(() => this.animate());
+    }
+
+    drawDaySky() {
+        // Natural sky with rich variation
+        // Base gradient
+        const gradient = this.ctx.createRadialGradient(
+            this.centerX * 0.35, this.centerY * 0.25, 0,
+            this.centerX, this.centerY, Math.max(this.canvas.width, this.canvas.height) * 1.1
+        );
+        gradient.addColorStop(0, '#F0F8FC');      // Almost white bright spot
+        gradient.addColorStop(0.08, '#DCF0FA');   // Very pale blue
+        gradient.addColorStop(0.18, '#C4E6F7');   // Pale sky
+        gradient.addColorStop(0.3, '#A8D8F2');    // Light sky blue
+        gradient.addColorStop(0.45, '#8CCAEC');   // Soft blue
+        gradient.addColorStop(0.6, '#70BCE4');    // Medium sky blue
+        gradient.addColorStop(0.75, '#58AEDC');   // Richer blue
+        gradient.addColorStop(0.9, '#42A0D4');    // Deeper blue
+        gradient.addColorStop(1, '#3090C8');      // Blue at far edges
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Secondary warm bright spot (like sun glow area)
+        const gradient2 = this.ctx.createRadialGradient(
+            this.canvas.width * 0.9, this.canvas.height * 0.15, 0,
+            this.canvas.width * 0.9, this.canvas.height * 0.15, this.canvas.width * 0.55
+        );
+        gradient2.addColorStop(0, 'rgba(255, 250, 240, 0.35)');
+        gradient2.addColorStop(0.2, 'rgba(240, 245, 255, 0.25)');
+        gradient2.addColorStop(0.5, 'rgba(200, 225, 250, 0.15)');
+        gradient2.addColorStop(1, 'rgba(180, 210, 240, 0)');
+        this.ctx.fillStyle = gradient2;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Cool shadow area
+        const gradient3 = this.ctx.createRadialGradient(
+            this.canvas.width * 0.1, this.canvas.height * 0.85, 0,
+            this.canvas.width * 0.1, this.canvas.height * 0.85, this.canvas.width * 0.4
+        );
+        gradient3.addColorStop(0, 'rgba(100, 160, 210, 0.2)');
+        gradient3.addColorStop(0.5, 'rgba(120, 175, 220, 0.1)');
+        gradient3.addColorStop(1, 'rgba(140, 190, 230, 0)');
+        this.ctx.fillStyle = gradient3;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Additional variation patch
+        const gradient4 = this.ctx.createRadialGradient(
+            this.canvas.width * 0.6, this.canvas.height * 0.5, 0,
+            this.canvas.width * 0.6, this.canvas.height * 0.5, this.canvas.width * 0.35
+        );
+        gradient4.addColorStop(0, 'rgba(190, 225, 250, 0.2)');
+        gradient4.addColorStop(0.6, 'rgba(170, 210, 245, 0.08)');
+        gradient4.addColorStop(1, 'rgba(150, 200, 240, 0)');
+        this.ctx.fillStyle = gradient4;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Subtle haze near edges
+        const gradient5 = this.ctx.createRadialGradient(
+            this.centerX, this.centerY, Math.max(this.canvas.width, this.canvas.height) * 0.5,
+            this.centerX, this.centerY, Math.max(this.canvas.width, this.canvas.height) * 1.2
+        );
+        gradient5.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        gradient5.addColorStop(0.5, 'rgba(200, 220, 240, 0.05)');
+        gradient5.addColorStop(1, 'rgba(180, 200, 230, 0.12)');
+        this.ctx.fillStyle = gradient5;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+
+    animateTimeOfDay() {
+        const state = this.timeOfDayState;
+        const sliderValue = state.value; // 0-100
+
+        // Sky transition: night → aurora purple → soft sunrise → deep blue day
+        const centerX = this.canvas.width / 2;
+        const centerY = this.canvas.height / 2;
+        const maxRadius = Math.max(this.canvas.width, this.canvas.height) * 0.9;
+
+        let topColor, bottomColor;
+
+        if (sliderValue <= 25) {
+            // Night phase - dark blue/indigo
+            const t = sliderValue / 25;
+            topColor = this.lerpColor('#0a0a12', '#15152a', t);
+            bottomColor = this.lerpColor('#12121f', '#1e1e38', t);
+        } else if (sliderValue <= 45) {
+            // Aurora phase - purple/violet
+            const t = (sliderValue - 25) / 20;
+            topColor = this.lerpColor('#15152a', '#3a2855', t);
+            bottomColor = this.lerpColor('#1e1e38', '#5a3a70', t);
+        } else if (sliderValue <= 60) {
+            // Sunrise phase - soft rose/pink (not brown/orange)
+            const t = (sliderValue - 45) / 15;
+            topColor = this.lerpColor('#3a2855', '#c88aa0', t);
+            bottomColor = this.lerpColor('#5a3a70', '#e8b8c8', t);
+        } else if (sliderValue <= 80) {
+            // Transition to day - pink to sky blue
+            const t = (sliderValue - 60) / 20;
+            topColor = this.lerpColor('#c88aa0', '#4a90c0', t);
+            bottomColor = this.lerpColor('#e8b8c8', '#88c8e8', t);
+        } else {
+            // Day phase - deep blue sky
+            const t = (sliderValue - 80) / 20;
+            topColor = this.lerpColor('#4a90c0', '#3080b8', t);
+            bottomColor = this.lerpColor('#88c8e8', '#a8d8f0', t);
+        }
+
+        const gradient = this.ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRadius);
+        gradient.addColorStop(0, topColor);
+        gradient.addColorStop(1, bottomColor);
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        // Draw stars with opacity
+        if (state.stars > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = state.stars;
+            this.animateStars();
+            this.ctx.restore();
+
+            // Also draw shooting stars at night
+            if (state.stars > 0.3) {
+                this.animateShootingStars();
+            }
+        }
+
+        // Draw clouds with opacity
+        if (state.clouds > 0) {
+            this.ctx.save();
+            this.ctx.globalAlpha = state.clouds;
+            this.animateClouds();
+            this.ctx.restore();
+        }
+
+        // Always animate butterflies in day mode (they fly on top)
+        if (state.clouds > 0) {
+            this.animateButterflies();
+        }
+    }
+
+    // Unused - kept for compatibility
+    drawEdgeGlow(sliderValue) {
+        return;
+    }
+
+    lerpColor(color1, color2, t) {
+        const c1 = this.hexToRgb(color1);
+        const c2 = this.hexToRgb(color2);
+        const r = Math.round(c1.r + (c2.r - c1.r) * Math.max(0, Math.min(1, t)));
+        const g = Math.round(c1.g + (c2.g - c1.g) * Math.max(0, Math.min(1, t)));
+        const b = Math.round(c1.b + (c2.b - c1.b) * Math.max(0, Math.min(1, t)));
+        return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    hexToRgb(hex) {
+        // Handle rgb() format
+        if (hex.startsWith('rgb')) {
+            const match = hex.match(/(\d+),\s*(\d+),\s*(\d+)/);
+            if (match) {
+                return { r: parseInt(match[1]), g: parseInt(match[2]), b: parseInt(match[3]) };
+            }
+        }
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return result ? {
+            r: parseInt(result[1], 16),
+            g: parseInt(result[2], 16),
+            b: parseInt(result[3], 16)
+        } : { r: 0, g: 0, b: 0 };
+    }
+
+    drawSunGlow(x, y, intensity, warmth) {
+        // warmth: 1 = normal, 2 = sunrise/sunset warm colors
+        const radius = Math.min(this.canvas.width, this.canvas.height) * 0.4;
+        const gradient = this.ctx.createRadialGradient(x, y, 0, x, y, radius);
+
+        if (warmth > 1.5) {
+            // Warm sunrise/sunset colors
+            gradient.addColorStop(0, `rgba(255, 200, 100, ${0.6 * intensity})`);
+            gradient.addColorStop(0.2, `rgba(255, 150, 80, ${0.4 * intensity})`);
+            gradient.addColorStop(0.4, `rgba(255, 100, 80, ${0.2 * intensity})`);
+            gradient.addColorStop(0.7, `rgba(200, 80, 100, ${0.1 * intensity})`);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        } else {
+            // Normal daytime sun
+            gradient.addColorStop(0, `rgba(255, 255, 220, ${0.4 * intensity})`);
+            gradient.addColorStop(0.3, `rgba(255, 250, 200, ${0.2 * intensity})`);
+            gradient.addColorStop(0.6, `rgba(255, 245, 180, ${0.1 * intensity})`);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        }
+
+        this.ctx.fillStyle = gradient;
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
     animateStars() {
@@ -687,7 +1395,7 @@ class SkyAnimation {
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < 1) return;
 
-            const opacity = conn.opacity * 0.35 * brightnessBoost;
+            const opacity = conn.opacity * (this.isMobile ? 0.5 : 0.65) * brightnessBoost;
             if (opacity <= 0.001 || opacity > 1 || isNaN(opacity)) return;
 
             const gradient = this.ctx.createLinearGradient(x1, y1, x2, y2);
@@ -698,8 +1406,8 @@ class SkyAnimation {
             this.ctx.moveTo(x1, y1);
             this.ctx.lineTo(x2, y2);
             this.ctx.strokeStyle = gradient;
-            this.ctx.globalAlpha = Math.min(opacity, 0.5);
-            this.ctx.lineWidth = 1;
+            this.ctx.globalAlpha = Math.min(opacity, this.isMobile ? 0.65 : 0.75);
+            this.ctx.lineWidth = this.isMobile ? 1.2 : 1.4;
             this.ctx.stroke();
         });
 
@@ -802,17 +1510,19 @@ class SkyAnimation {
     }
 
     animateClouds() {
-        // Mobile adjustments: higher opacity, smaller clouds for better rotation visibility
-        const opacityBoost = this.isMobile ? 1.4 : 1;
-        const sizeScale = this.isMobile ? 0.6 : 1;
+        // Image-based cloud rendering
+        if (!this.cloudImagesLoaded || this.clouds.length === 0) return;
 
-        // Draw subtle vortex center glow
-        this.drawVortexCenter();
-
-        // Rotate clouds in swirl pattern like constellations
         this.clouds.forEach(cloud => {
-            // Increased parallax range: 0.2x to 1x speed based on depth
-            // This makes close clouds rotate much faster than distant ones
+            // Skip if no image
+            if (!cloud.image) return;
+
+            // Update drift
+            cloud.originalX += cloud.driftX;
+            cloud.originalY += cloud.driftY;
+            cloud.pulsePhase += cloud.pulseSpeed;
+
+            // Apply rotation based on depth (parallax)
             const parallaxFactor = 0.2 + (cloud.depth * 0.8);
             const effectiveAngle = this.rotationAngle * parallaxFactor;
 
@@ -824,44 +1534,49 @@ class SkyAnimation {
             const posX = this.centerX + cloud.x;
             const posY = this.centerY + cloud.y;
 
-            // Calculate tangent direction for cloud orientation
-            const tangentAngle = Math.atan2(cloud.y, cloud.x) + Math.PI / 2 + cloud.curve;
-            const dirX = Math.cos(tangentAngle);
-            const dirY = Math.sin(tangentAngle);
-            const perpX = -dirY;
-            const perpY = dirX;
+            // Subtle scale pulse
+            const pulse = 1 + Math.sin(cloud.pulsePhase) * 0.02;
+            const finalScale = cloud.scale * pulse;
 
-            // Draw each puff as a soft fluffy circle along the cloud path
-            cloud.puffs.forEach(puff => {
-                const scaledSize = puff.size * sizeScale;
-                const puffPosX = posX + dirX * cloud.length * sizeScale * (puff.t - 0.5) + perpX * puff.offset * sizeScale;
-                const puffPosY = posY + dirY * cloud.length * sizeScale * (puff.t - 0.5) + perpY * puff.offset * sizeScale;
+            const imgWidth = cloud.image.width * finalScale;
+            const imgHeight = cloud.image.height * finalScale;
 
-                // Combine cloud base opacity with per-puff opacity for natural variation
-                // Also factor in depth: closer clouds (high depth) are more opaque
-                const depthOpacity = 0.6 + (cloud.depth * 0.4);
-                const finalOpacity = Math.min(1, cloud.opacity * puff.opacity * opacityBoost * depthOpacity);
+            // Save context for transformations
+            this.ctx.save();
 
-                // Use cloud tint color
-                const { r, g, b } = cloud.tint;
+            // Move to cloud position
+            this.ctx.translate(posX, posY);
 
-                // Soft fluffy gradient with varied density
-                const gradient = this.ctx.createRadialGradient(
-                    puffPosX, puffPosY - scaledSize * 0.15, 0,
-                    puffPosX, puffPosY, scaledSize * 1.2
-                );
-                gradient.addColorStop(0, `rgba(${r}, ${g}, ${b}, ${finalOpacity * 0.95})`);
-                gradient.addColorStop(0.25, `rgba(${r}, ${g}, ${b}, ${finalOpacity * 0.75})`);
-                gradient.addColorStop(0.5, `rgba(${r}, ${g}, ${b}, ${finalOpacity * 0.45})`);
-                gradient.addColorStop(0.75, `rgba(${r}, ${g}, ${b}, ${finalOpacity * 0.15})`);
-                gradient.addColorStop(1, `rgba(${r}, ${g}, ${b}, 0)`);
+            // Apply rotation
+            if (cloud.rotation) {
+                this.ctx.rotate(cloud.rotation);
+            }
 
-                this.ctx.fillStyle = gradient;
-                this.ctx.beginPath();
-                this.ctx.arc(puffPosX, puffPosY, scaledSize * 1.2, 0, Math.PI * 2);
-                this.ctx.fill();
-            });
+            // Apply horizontal flip if needed
+            if (cloud.flipX) {
+                this.ctx.scale(-1, 1);
+            }
+
+            // Set opacity and blend mode
+            this.ctx.globalAlpha = cloud.opacity;
+            this.ctx.globalCompositeOperation = 'screen'; // Makes black transparent
+
+            // Draw the cloud image centered
+            this.ctx.drawImage(
+                cloud.image,
+                -imgWidth / 2,
+                -imgHeight / 2,
+                imgWidth,
+                imgHeight
+            );
+
+            // Restore context
+            this.ctx.restore();
         });
+
+        // Reset composite operation
+        this.ctx.globalCompositeOperation = 'source-over';
+        this.ctx.globalAlpha = 1;
     }
 
     animateContrails() {
@@ -938,6 +1653,209 @@ class SkyAnimation {
         });
     }
 
+    animateButterflies() {
+        this.butterflies = this.butterflies.filter(butterfly => {
+            // Update phases
+            butterfly.wobblePhase += 0.03;
+            butterfly.wingPhase += butterfly.wingSpeed;
+            butterfly.curvePhase += butterfly.curveSpeed;
+
+            // Gentle looping/meandering curve (like real butterfly flight)
+            const curveInfluence = Math.sin(butterfly.curvePhase) * butterfly.curveAmount;
+            const speed = Math.sqrt(butterfly.vx * butterfly.vx + butterfly.vy * butterfly.vy);
+            const currentAngle = Math.atan2(butterfly.vy, butterfly.vx);
+
+            // Apply curve - gradual turn, not instant
+            const targetAngle = currentAngle + curveInfluence;
+            butterfly.vx = butterfly.vx * 0.97 + Math.cos(targetAngle) * speed * 0.03;
+            butterfly.vy = butterfly.vy * 0.97 + Math.sin(targetAngle) * speed * 0.03;
+
+            // Gentle side-to-side flutter (perpendicular to movement)
+            const moveAngle = Math.atan2(butterfly.vy, butterfly.vx);
+            const flutter = Math.sin(butterfly.wobblePhase) * butterfly.wobbleAmount * 0.12;
+            const flutterX = Math.cos(moveAngle + Math.PI / 2) * flutter;
+            const flutterY = Math.sin(moveAngle + Math.PI / 2) * flutter;
+
+            butterfly.x += butterfly.vx + flutterX;
+            butterfly.y += butterfly.vy + flutterY;
+
+            // Smooth rotation follows movement direction gradually
+            const targetRotation = Math.atan2(butterfly.vy, butterfly.vx);
+            const angleDiff = Math.atan2(Math.sin(targetRotation - butterfly.rotation), Math.cos(targetRotation - butterfly.rotation));
+            butterfly.rotation += angleDiff * 0.04;
+
+            // Remove if off screen
+            if (butterfly.x < -50 || butterfly.x > this.canvas.width + 50 ||
+                butterfly.y < -50 || butterfly.y > this.canvas.height + 50) {
+                return false;
+            }
+
+            // Draw the butterfly
+            this.drawButterfly(butterfly);
+
+            return true;
+        });
+    }
+
+    drawButterfly(butterfly) {
+        const { x, y, size, colors, wingPhase, rotation, baseOpacity } = butterfly;
+        const opacity = baseOpacity || 0.7;
+
+        // Wing flap animation - more gentle range
+        const wingFlap = (Math.sin(wingPhase) + 1) / 2;
+        const wingAngle = wingFlap * 0.5 + 0.3; // Gentler flap range
+
+        this.ctx.save();
+        this.ctx.translate(x, y);
+        this.ctx.rotate(rotation + Math.PI / 2);
+
+        // Parse colors
+        const primary = this.hexToRgb(colors.primary);
+        const secondary = this.hexToRgb(colors.secondary);
+        const accent = this.hexToRgb(colors.accent);
+
+        // Delicate wing dimensions
+        const upperWingWidth = size * 1.4 * wingAngle;
+        const upperWingHeight = size * 1.1;
+        const lowerWingWidth = size * 0.9 * wingAngle;
+        const lowerWingHeight = size * 0.7;
+
+        // Draw wings with soft, translucent gradients (scaled by opacity)
+        // Left upper wing
+        this.ctx.beginPath();
+        const leftUpperGrad = this.ctx.createRadialGradient(
+            -upperWingWidth * 0.4, -upperWingHeight * 0.3, 0,
+            -upperWingWidth * 0.4, -upperWingHeight * 0.3, upperWingWidth * 0.9
+        );
+        leftUpperGrad.addColorStop(0, `rgba(255, 255, 255, ${0.85 * opacity})`);
+        leftUpperGrad.addColorStop(0.2, `rgba(${accent.r}, ${accent.g}, ${accent.b}, ${0.75 * opacity})`);
+        leftUpperGrad.addColorStop(0.5, `rgba(${primary.r}, ${primary.g}, ${primary.b}, ${0.65 * opacity})`);
+        leftUpperGrad.addColorStop(0.8, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, ${0.5 * opacity})`);
+        leftUpperGrad.addColorStop(1, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, ${0.15 * opacity})`);
+
+        this.ctx.fillStyle = leftUpperGrad;
+        this.ctx.moveTo(0, -size * 0.05);
+        this.ctx.bezierCurveTo(
+            -upperWingWidth * 0.4, -upperWingHeight * 0.4,
+            -upperWingWidth * 0.95, -upperWingHeight * 0.7,
+            -upperWingWidth * 0.7, -upperWingHeight * 0.1
+        );
+        this.ctx.bezierCurveTo(
+            -upperWingWidth * 0.8, upperWingHeight * 0.05,
+            -upperWingWidth * 0.3, size * 0.1,
+            0, size * 0.05
+        );
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Right upper wing
+        this.ctx.beginPath();
+        const rightUpperGrad = this.ctx.createRadialGradient(
+            upperWingWidth * 0.4, -upperWingHeight * 0.3, 0,
+            upperWingWidth * 0.4, -upperWingHeight * 0.3, upperWingWidth * 0.9
+        );
+        rightUpperGrad.addColorStop(0, `rgba(255, 255, 255, ${0.85 * opacity})`);
+        rightUpperGrad.addColorStop(0.2, `rgba(${accent.r}, ${accent.g}, ${accent.b}, ${0.75 * opacity})`);
+        rightUpperGrad.addColorStop(0.5, `rgba(${primary.r}, ${primary.g}, ${primary.b}, ${0.65 * opacity})`);
+        rightUpperGrad.addColorStop(0.8, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, ${0.5 * opacity})`);
+        rightUpperGrad.addColorStop(1, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, ${0.15 * opacity})`);
+
+        this.ctx.fillStyle = rightUpperGrad;
+        this.ctx.moveTo(0, -size * 0.05);
+        this.ctx.bezierCurveTo(
+            upperWingWidth * 0.4, -upperWingHeight * 0.4,
+            upperWingWidth * 0.95, -upperWingHeight * 0.7,
+            upperWingWidth * 0.7, -upperWingHeight * 0.1
+        );
+        this.ctx.bezierCurveTo(
+            upperWingWidth * 0.8, upperWingHeight * 0.05,
+            upperWingWidth * 0.3, size * 0.1,
+            0, size * 0.05
+        );
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Left lower wing - rounder, teardrop shape
+        this.ctx.beginPath();
+        const leftLowerGrad = this.ctx.createRadialGradient(
+            -lowerWingWidth * 0.3, lowerWingHeight * 0.3, 0,
+            -lowerWingWidth * 0.3, lowerWingHeight * 0.3, lowerWingWidth * 0.8
+        );
+        leftLowerGrad.addColorStop(0, `rgba(255, 255, 255, ${0.75 * opacity})`);
+        leftLowerGrad.addColorStop(0.3, `rgba(${accent.r}, ${accent.g}, ${accent.b}, ${0.65 * opacity})`);
+        leftLowerGrad.addColorStop(0.7, `rgba(${primary.r}, ${primary.g}, ${primary.b}, ${0.5 * opacity})`);
+        leftLowerGrad.addColorStop(1, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, ${0.2 * opacity})`);
+
+        this.ctx.fillStyle = leftLowerGrad;
+        this.ctx.moveTo(0, size * 0.02);
+        this.ctx.bezierCurveTo(
+            -lowerWingWidth * 0.4, size * 0.15,
+            -lowerWingWidth * 0.85, lowerWingHeight * 0.6,
+            -lowerWingWidth * 0.5, lowerWingHeight * 0.95
+        );
+        this.ctx.bezierCurveTo(
+            -lowerWingWidth * 0.2, lowerWingHeight * 0.6,
+            0, size * 0.3,
+            0, size * 0.25
+        );
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Right lower wing
+        this.ctx.beginPath();
+        const rightLowerGrad = this.ctx.createRadialGradient(
+            lowerWingWidth * 0.3, lowerWingHeight * 0.3, 0,
+            lowerWingWidth * 0.3, lowerWingHeight * 0.3, lowerWingWidth * 0.8
+        );
+        rightLowerGrad.addColorStop(0, `rgba(255, 255, 255, ${0.75 * opacity})`);
+        rightLowerGrad.addColorStop(0.3, `rgba(${accent.r}, ${accent.g}, ${accent.b}, ${0.65 * opacity})`);
+        rightLowerGrad.addColorStop(0.7, `rgba(${primary.r}, ${primary.g}, ${primary.b}, ${0.5 * opacity})`);
+        rightLowerGrad.addColorStop(1, `rgba(${secondary.r}, ${secondary.g}, ${secondary.b}, ${0.2 * opacity})`);
+
+        this.ctx.fillStyle = rightLowerGrad;
+        this.ctx.moveTo(0, size * 0.02);
+        this.ctx.bezierCurveTo(
+            lowerWingWidth * 0.4, size * 0.15,
+            lowerWingWidth * 0.85, lowerWingHeight * 0.6,
+            lowerWingWidth * 0.5, lowerWingHeight * 0.95
+        );
+        this.ctx.bezierCurveTo(
+            lowerWingWidth * 0.2, lowerWingHeight * 0.6,
+            0, size * 0.3,
+            0, size * 0.25
+        );
+        this.ctx.closePath();
+        this.ctx.fill();
+
+        // Delicate body - thin and tapered
+        this.ctx.fillStyle = `rgba(60, 50, 40, ${0.9 * opacity})`;
+        this.ctx.beginPath();
+        this.ctx.ellipse(0, size * 0.05, size * 0.04, size * 0.28, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Tiny head
+        this.ctx.beginPath();
+        this.ctx.arc(0, -size * 0.22, size * 0.05, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Delicate antennae - thin curved lines
+        this.ctx.strokeStyle = `rgba(60, 50, 40, ${0.7 * opacity})`;
+        this.ctx.lineWidth = Math.max(0.5, size * 0.015);
+        this.ctx.lineCap = 'round';
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(-size * 0.02, -size * 0.26);
+        this.ctx.quadraticCurveTo(-size * 0.1, -size * 0.38, -size * 0.08, -size * 0.45);
+        this.ctx.stroke();
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(size * 0.02, -size * 0.26);
+        this.ctx.quadraticCurveTo(size * 0.1, -size * 0.38, size * 0.08, -size * 0.45);
+        this.ctx.stroke();
+
+        this.ctx.restore();
+    }
+
     animateShootingStars() {
         this.shootingStars = this.shootingStars.filter(star => {
             star.x += star.vx;
@@ -945,7 +1863,7 @@ class SkyAnimation {
             star.life -= star.fadeRate;
 
             star.scale = Math.max(0.2, star.scale * 0.998);
-            star.opacity = Math.pow(star.life, 0.6) * star.scale * 0.85;
+            star.opacity = Math.pow(star.life, 0.6) * star.scale * 0.9;
             star.headOpacity = Math.max(0, Math.pow(star.life, 1.5) * star.opacity);
             star.tailOpacity = Math.max(0, star.opacity);
 
@@ -972,7 +1890,7 @@ class SkyAnimation {
             const glowGradient = this.ctx.createLinearGradient(
                 star.x, star.y, star.x - dirX * trailLength * 0.4, star.y - dirY * trailLength * 0.4
             );
-            glowGradient.addColorStop(0, `rgba(${star.color.r}, ${star.color.g}, ${star.color.b}, ${star.tailOpacity * 0.12})`);
+            glowGradient.addColorStop(0, `rgba(${star.color.r}, ${star.color.g}, ${star.color.b}, ${star.tailOpacity * 0.15})`);
             glowGradient.addColorStop(1, `rgba(${star.color.r}, ${star.color.g}, ${star.color.b}, 0)`);
 
             this.ctx.strokeStyle = glowGradient;
@@ -987,9 +1905,9 @@ class SkyAnimation {
             const mainGradient = this.ctx.createLinearGradient(
                 star.x, star.y, star.x - dirX * trailLength, star.y - dirY * trailLength
             );
-            mainGradient.addColorStop(0, `rgba(255, 255, 255, ${star.tailOpacity * 0.65})`);
-            mainGradient.addColorStop(0.1, `rgba(${star.color.r}, ${star.color.g}, ${star.color.b}, ${star.tailOpacity * 0.5})`);
-            mainGradient.addColorStop(0.4, `rgba(${star.color.r}, ${star.color.g}, ${star.color.b}, ${star.tailOpacity * 0.2})`);
+            mainGradient.addColorStop(0, `rgba(255, 255, 255, ${star.tailOpacity * 0.7})`);
+            mainGradient.addColorStop(0.1, `rgba(${star.color.r}, ${star.color.g}, ${star.color.b}, ${star.tailOpacity * 0.55})`);
+            mainGradient.addColorStop(0.4, `rgba(${star.color.r}, ${star.color.g}, ${star.color.b}, ${star.tailOpacity * 0.25})`);
             mainGradient.addColorStop(1, `rgba(${star.color.r}, ${star.color.g}, ${star.color.b}, 0)`);
 
             this.ctx.strokeStyle = mainGradient;
@@ -1000,7 +1918,7 @@ class SkyAnimation {
             this.ctx.stroke();
 
             // Head
-            this.ctx.fillStyle = `rgba(255, 255, 255, ${star.headOpacity * 0.8})`;
+            this.ctx.fillStyle = `rgba(255, 255, 255, ${star.headOpacity * 0.9})`;
             this.ctx.beginPath();
             this.ctx.arc(star.x, star.y, 1.2 * currentScale, 0, Math.PI * 2);
             this.ctx.fill();
@@ -1050,8 +1968,9 @@ class ScrollManager {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    const themeController = new ThemeController();
-    new SkyAnimation(themeController);
+    const themeController = new ThemeToggleController();
+    const skyAnimation = new SkyAnimation(themeController);
+    themeController.setAnimation(skyAnimation);
     new ScrollManager();
 
     // Hide preloader once everything is ready

@@ -102,33 +102,68 @@ body {
     transition: background-color 0.5s ease, color 0.5s ease;
 }
 
-/* Theme Toggle Button */
-.theme-toggle {
+/* Theme Toggle */
+.theme-toggle-container {
     position: fixed;
     top: 25px;
     right: 25px;
     z-index: 9999;
-    width: 44px;
-    height: 44px;
-    border-radius: 50%;
-    border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--icon-color);
-    font-size: 1.1rem;
-    cursor: pointer;
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
     pointer-events: auto;
 }
 
-.theme-toggle:hover {
-    border-color: var(--border-hover);
-    color: var(--icon-hover);
-    transform: scale(1.05);
+.theme-toggle-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.theme-toggle-btn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.theme-toggle-btn:active {
+    transform: scale(0.95);
+}
+
+.theme-icon {
+    position: absolute;
+    font-size: 1.2rem;
+    transition: opacity 0.3s ease, transform 0.3s ease, color 0.3s ease;
+    pointer-events: none; /* Allow clicks to pass through to button */
+}
+
+#theme-icon-moon {
+    color: #a0c4ff;
+    opacity: 1;
+    transform: rotate(0deg);
+}
+
+#theme-icon-sun {
+    color: #ffd93d;
+    opacity: 0;
+    transform: rotate(-90deg);
+}
+
+/* Light mode - show sun, hide moon */
+.light-mode #theme-icon-moon {
+    opacity: 0;
+    transform: rotate(90deg);
+}
+
+.light-mode #theme-icon-sun {
+    opacity: 1;
+    transform: rotate(0deg);
 }
 
 /* Canvas Background */
@@ -212,7 +247,7 @@ body {
     object-fit: cover;
     border: 2px solid var(--border-color);
     box-shadow: 0 0 40px rgba(100, 181, 246, 0.15);
-    transition: border-color 0.3s ease;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
 .name {
@@ -462,11 +497,17 @@ h2.icon-card-label {
         padding: 40px 20px;
     }
 
-    .theme-toggle {
-        top: 15px;
-        right: 15px;
+    .theme-toggle-container {
+        top: 20px;
+        right: 20px;
+    }
+
+    .theme-toggle-btn {
         width: 40px;
         height: 40px;
+    }
+
+    .theme-icon {
         font-size: 1rem;
     }
 
@@ -603,5 +644,46 @@ h2.icon-card-label {
 
     .name {
         font-size: 1.5rem;
+    }
+}
+
+/* Sky Game Card */
+.sky-game-card {
+    padding: 0 !important;
+    overflow: hidden;
+}
+
+.sky-game-container {
+    position: relative;
+    width: 100%;
+    height: 250px;
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: crosshair;
+    background: linear-gradient(to bottom, #0a0a0a, #0f0f1a);
+    transition: background 0.3s ease;
+}
+
+body.light-mode .sky-game-container {
+    background: linear-gradient(to bottom, #87ceeb, #e8f4fc);
+}
+
+#sky-game-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+@media (max-width: 768px) {
+    .sky-game-container {
+        height: 180px;
+    }
+}
+
+@media (max-width: 480px) {
+    .sky-game-container {
+        height: 160px;
     }
 }
