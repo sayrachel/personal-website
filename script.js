@@ -18,32 +18,32 @@ class ThemeToggleController {
             },
             15: { // Night - subtle purple hint
                 sky: ['#12122a', '#1a1a35'],
-                stars: 0.9,
+                stars: 1,
                 clouds: 0
             },
-            30: { // Pre-dawn - deep purple
+            30: { // Pre-dawn - deep purple - stars still strong
                 sky: ['#1e1540', '#2d2055'],
-                stars: 0.7,
+                stars: 0.95,
                 clouds: 0
             },
-            42: { // Aurora/twilight - clouds start as whispers
+            42: { // Aurora/twilight - stars start fading, clouds whisper in
                 sky: ['#3d2860', '#5a3575'],
-                stars: 0.4,
+                stars: 0.75,
                 clouds: 0.02
             },
-            52: { // Early sunrise - barely visible clouds
+            52: { // Early sunrise - stars fading but still visible
                 sky: ['#6b4070', '#c45c80'],
-                stars: 0.15,
+                stars: 0.45,
                 clouds: 0.05
             },
-            62: { // Sunrise - warm pink and peach
+            62: { // Sunrise - warm pink and peach - stars nearly gone
                 sky: ['#d4728c', '#f0a090'],
-                stars: 0,
+                stars: 0.15,
                 clouds: 0.1
             },
-            72: { // Golden hour - soft warm tones
+            72: { // Golden hour - soft warm tones - last traces of stars
                 sky: ['#e8a088', '#b8d8d0'],
-                stars: 0,
+                stars: 0.03,
                 clouds: 0.2
             },
             82: { // Morning - transitioning to blue
@@ -98,6 +98,7 @@ class ThemeToggleController {
             cancelAnimationFrame(this.animationFrame);
         }
         this.isAnimating = true;
+        this.transitionDirection = targetValue > this.currentValue ? 'toDay' : 'toNight';
 
         // Disable button during transition
         if (this.toggleBtn) {
@@ -1411,15 +1412,30 @@ class SkyAnimation {
         this.ctx.fillStyle = gradient;
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        // Draw stars with opacity
+        // Draw stars with smooth opacity transition
         if (state.stars > 0) {
+            // Get transition direction for asymmetric fading
+            const goingToDay = this.themeController?.transitionDirection === 'toDay';
+
+            let smoothStarOpacity;
+            if (goingToDay) {
+                // Going to day: stars linger longer, then fade out smoothly
+                // Use a curve that keeps stars visible longer, then fades at the end
+                const lingering = Math.pow(state.stars, 0.5); // Square root = slower initial fade
+                smoothStarOpacity = (1 - Math.cos(lingering * Math.PI)) / 2; // Sine easing for smoothness
+            } else {
+                // Going to night: stars appear gradually with gentle ease-in
+                const eased = Math.pow(state.stars, 1.5); // Slower initial appearance
+                smoothStarOpacity = (1 - Math.cos(eased * Math.PI)) / 2;
+            }
+
             this.ctx.save();
-            this.ctx.globalAlpha = state.stars;
+            this.ctx.globalAlpha = smoothStarOpacity;
             this.animateStars();
             this.ctx.restore();
 
-            // Also draw shooting stars at night
-            if (state.stars > 0.3) {
+            // Also draw shooting stars at night (using smooth opacity)
+            if (smoothStarOpacity > 0.3) {
                 this.animateShootingStars();
             }
         }
@@ -1661,23 +1677,35 @@ class SkyAnimation {
         const cloudVisibility = this.themeController ?
             this.themeController.getInterpolatedValue('clouds') : 1;
 
+        // Get stable direction from theme controller
+        const goingToDay = this.themeController?.transitionDirection === 'toDay';
+
         this.clouds.forEach(cloud => {
             // Skip if no image
             if (!cloud.image) return;
 
-            // Calculate opacity based on cloud type - different types fade in at different rates
+            // Calculate opacity based on cloud type and direction
             let typeMultiplier;
             if (cloud.cloudType === 'hazy' || cloud.cloudType === 'distant') {
-                // Hazy/distant appear early - visible when cloudVisibility > 0.02
-                // They reach their full baseOpacity when cloudVisibility hits ~0.25
-                typeMultiplier = Math.min(1, cloudVisibility * 4);
+                if (goingToDay) {
+                    // Going to day: hazy appear early
+                    typeMultiplier = Math.min(1, cloudVisibility * 4);
+                } else {
+                    // Going to night: hazy linger longer
+                    typeMultiplier = Math.min(1, cloudVisibility * 6);
+                }
             } else {
-                // Large/medium clouds - start when cloudVisibility > 0.25
-                // Extra smooth cubic sine fade for very natural appearance
-                const delayed = Math.max(0, (cloudVisibility - 0.25) / 0.75);
-                // Double sine ease for ultra-smooth fade (S-curve)
-                const smooth = delayed <= 0 ? 0 : (1 - Math.cos(delayed * Math.PI)) / 2;
-                typeMultiplier = smooth * smooth; // Square it for even gentler start
+                if (goingToDay) {
+                    // Going to day: solid clouds fade in smoothly
+                    const delayed = Math.max(0, (cloudVisibility - 0.25) / 0.75);
+                    const smooth = delayed <= 0 ? 0 : (1 - Math.cos(delayed * Math.PI)) / 2;
+                    typeMultiplier = smooth * smooth;
+                } else {
+                    // Going to night: solid clouds linger much longer
+                    const delayed = Math.max(0, cloudVisibility / 0.8);
+                    const smooth = (1 - Math.cos(delayed * Math.PI)) / 2;
+                    typeMultiplier = Math.sqrt(smooth); // Square root for slower fade out
+                }
             }
 
             const finalOpacity = cloud.baseOpacity * typeMultiplier;
