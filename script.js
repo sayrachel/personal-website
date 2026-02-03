@@ -58,6 +58,9 @@ class ThemeToggleController {
             document.body.classList.add('light-mode');
         }
 
+        // Set initial icon state
+        this.updateIcons();
+
         // Toggle button click
         if (this.toggleBtn) {
             this.toggleBtn.addEventListener('click', (e) => {
@@ -78,6 +81,11 @@ class ThemeToggleController {
         if (this.isAnimating) return;
         this.isAnimating = true;
 
+        // Disable button during transition
+        if (this.toggleBtn) {
+            this.toggleBtn.classList.add('transitioning');
+        }
+
         const startValue = this.currentValue;
         const diff = targetValue - startValue;
         const duration = 3000; // 3 seconds for full transition
@@ -94,15 +102,66 @@ class ThemeToggleController {
             this.currentValue = Math.round(startValue + diff * eased);
             this.updateSky();
             this.updateBodyClass();
+            this.updateIcons();
 
             if (progress < 1) {
                 requestAnimationFrame(animate);
             } else {
                 this.isAnimating = false;
+                // Re-enable button after transition
+                if (this.toggleBtn) {
+                    this.toggleBtn.classList.remove('transitioning');
+                }
             }
         };
 
         requestAnimationFrame(animate);
+    }
+
+    updateIcons() {
+        if (!this.moonIcon || !this.sunIcon) return;
+
+        // Progress from 0 (dark/moon) to 100 (light/sun)
+        const progress = this.currentValue / 100;
+
+        // Spin in place - icons rotate on their own axis while crossfading
+        const moonOpacity = 1 - progress;
+        const moonRotation = progress * 360; // Full rotation as it fades out
+
+        const sunOpacity = progress;
+        const sunRotation = -360 + (progress * 360); // Rotates in as it fades in
+
+        // Apply transforms
+        this.moonIcon.style.opacity = moonOpacity;
+        this.moonIcon.style.transform = `rotate(${moonRotation}deg)`;
+
+        this.sunIcon.style.opacity = sunOpacity;
+        this.sunIcon.style.transform = `rotate(${sunRotation}deg)`;
+
+        // Color transition matching sky colors
+        const moonColor = this.interpolateColor('#a0c4ff', '#c4b5fd', progress);
+        const sunColor = this.interpolateColor('#ff8c42', '#ffd93d', progress);
+
+        this.moonIcon.style.color = moonColor;
+        this.sunIcon.style.color = sunColor;
+    }
+
+    interpolateColor(color1, color2, progress) {
+        // Parse hex colors
+        const r1 = parseInt(color1.slice(1, 3), 16);
+        const g1 = parseInt(color1.slice(3, 5), 16);
+        const b1 = parseInt(color1.slice(5, 7), 16);
+
+        const r2 = parseInt(color2.slice(1, 3), 16);
+        const g2 = parseInt(color2.slice(3, 5), 16);
+        const b2 = parseInt(color2.slice(5, 7), 16);
+
+        // Interpolate
+        const r = Math.round(r1 + (r2 - r1) * progress);
+        const g = Math.round(g1 + (g2 - g1) * progress);
+        const b = Math.round(b1 + (b2 - b1) * progress);
+
+        return `rgb(${r}, ${g}, ${b})`;
     }
 
     updateBodyClass() {
@@ -386,16 +445,46 @@ class SkyAnimation {
             }
         }
 
-        // Count connections per star
-        const connectionCount = {};
+        // Build adjacency list for connected components
+        const adjacency = {};
         potentialConnections.forEach(conn => {
-            connectionCount[conn.star1] = (connectionCount[conn.star1] || 0) + 1;
-            connectionCount[conn.star2] = (connectionCount[conn.star2] || 0) + 1;
+            if (!adjacency[conn.star1]) adjacency[conn.star1] = [];
+            if (!adjacency[conn.star2]) adjacency[conn.star2] = [];
+            adjacency[conn.star1].push(conn.star2);
+            adjacency[conn.star2].push(conn.star1);
         });
 
-        // Only keep connections where at least one star has multiple connections
+        // Find connected components using BFS
+        const visited = new Set();
+        const starToComponent = {};
+        let componentId = 0;
+        const componentSizes = {};
+
+        Object.keys(adjacency).forEach(startStar => {
+            if (visited.has(Number(startStar))) return;
+
+            const queue = [Number(startStar)];
+            const component = [];
+
+            while (queue.length > 0) {
+                const star = queue.shift();
+                if (visited.has(star)) continue;
+                visited.add(star);
+                component.push(star);
+                starToComponent[star] = componentId;
+
+                (adjacency[star] || []).forEach(neighbor => {
+                    if (!visited.has(neighbor)) queue.push(neighbor);
+                });
+            }
+
+            componentSizes[componentId] = component.length;
+            componentId++;
+        });
+
+        // Only keep connections from components with 3+ stars
         this.connections = potentialConnections.filter(conn =>
-            connectionCount[conn.star1] > 1 || connectionCount[conn.star2] > 1
+            componentSizes[starToComponent[conn.star1]] >= 3
         );
     }
 
@@ -466,11 +555,11 @@ class SkyAnimation {
             }
         }
 
-        // Add isolated drifting clouds scattered far apart
+        // Add isolated drifting clouds in mid-range (not too far out)
         const numDrifting = this.isMobile ? 3 : 6;
         for (let i = 0; i < numDrifting; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 250 + Math.random() * maxDimension * 0.5; // Further out
+            const radius = 180 + Math.random() * maxDimension * 0.2; // Keep in mid-range only
             const type = Math.random() > 0.4 ? 'medium' : 'large';
             this.addImageCloud(
                 Math.cos(angle) * radius,
@@ -479,15 +568,27 @@ class SkyAnimation {
             );
         }
 
-        // Add distant hazy atmosphere clouds (very far, very subtle)
-        const numHazy = this.isMobile ? 2 : 4;
+        // Add hazy atmosphere clouds scattered everywhere
+        const numHazy = this.isMobile ? 18 : 15;
         for (let i = 0; i < numHazy; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const radius = 350 + Math.random() * maxDimension * 0.4;
+            const radius = 100 + Math.random() * maxDimension * 0.7; // Everywhere
             this.addImageCloud(
                 Math.cos(angle) * radius,
                 Math.sin(angle) * radius,
                 'hazy'
+            );
+        }
+
+        // Add distant semi-transparent clouds scattered everywhere
+        const numDistant = this.isMobile ? 22 : 20;
+        for (let i = 0; i < numDistant; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = 150 + Math.random() * maxDimension * 0.8; // Everywhere
+            this.addImageCloud(
+                Math.cos(angle) * radius,
+                Math.sin(angle) * radius,
+                'distant'
             );
         }
 
@@ -515,11 +616,17 @@ class SkyAnimation {
             scale = this.isMobile ? (0.1 + Math.random() * 0.08) : (0.2 + Math.random() * 0.15);
             opacity = 0.4 + Math.random() * 0.3;
             depth = 0.2 + Math.random() * 0.3;
+        } else if (type === 'distant') {
+            // Super soft foggy clouds - use hazy asset, very transparent
+            imageList = this.cloudAssets.hazy; // Use soft hazy image, not medium
+            scale = this.isMobile ? (0.25 + Math.random() * 0.2) : (0.5 + Math.random() * 0.4);
+            opacity = 0.2 + Math.random() * 0.35; // 20-55% opacity
+            depth = 0.1 + Math.random() * 0.2;
         } else { // hazy
             imageList = this.cloudAssets.hazy;
-            scale = this.isMobile ? (0.2 + Math.random() * 0.15) : (0.4 + Math.random() * 0.3);
-            opacity = 0.25 + Math.random() * 0.2;
-            depth = 0.1 + Math.random() * 0.2;
+            scale = this.isMobile ? (0.3 + Math.random() * 0.2) : (0.6 + Math.random() * 0.4);
+            opacity = 0.2 + Math.random() * 0.35; // 20-55% opacity
+            depth = 0.05 + Math.random() * 0.15;
         }
 
         const imageName = imageList[Math.floor(Math.random() * imageList.length)];

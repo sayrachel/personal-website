@@ -124,7 +124,7 @@ body {
     align-items: center;
     justify-content: center;
     position: relative;
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
 }
 
 .theme-toggle-btn:hover {
@@ -136,34 +136,28 @@ body {
     transform: scale(0.95);
 }
 
+.theme-toggle-btn.transitioning {
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.theme-toggle-btn.transitioning:hover {
+    transform: none;
+}
+
 .theme-icon {
     position: absolute;
     font-size: 1.2rem;
-    transition: opacity 0.3s ease, transform 0.3s ease, color 0.3s ease;
-    pointer-events: none; /* Allow clicks to pass through to button */
+    pointer-events: none;
+    /* Remove CSS transitions - JS will handle animation */
 }
 
 #theme-icon-moon {
-    color: #a0c4ff;
-    opacity: 1;
-    transform: rotate(0deg);
+    /* Initial state set by JS */
 }
 
 #theme-icon-sun {
-    color: #ffd93d;
-    opacity: 0;
-    transform: rotate(-90deg);
-}
-
-/* Light mode - show sun, hide moon */
-.light-mode #theme-icon-moon {
-    opacity: 0;
-    transform: rotate(90deg);
-}
-
-.light-mode #theme-icon-sun {
-    opacity: 1;
-    transform: rotate(0deg);
+    /* Initial state set by JS */
 }
 
 /* Canvas Background */
