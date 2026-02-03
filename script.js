@@ -1213,6 +1213,11 @@ class SkyAnimation {
                 const widthChange = Math.abs(window.innerWidth - lastWidth);
                 const heightChange = Math.abs(window.innerHeight - lastHeight);
 
+                // On mobile, ignore height-only changes (address bar hide/show)
+                if (this.isMobile && widthChange < 10) {
+                    return;
+                }
+
                 if (widthChange > 100 || heightChange > 100) {
                     this.resizeCanvas();
                     this.createStars();
@@ -1220,7 +1225,7 @@ class SkyAnimation {
                     this.createClouds();
                     lastWidth = this.canvas.width;
                     lastHeight = this.canvas.height;
-                } else {
+                } else if (widthChange >= 10) {
                     this.resizeCanvas();
                 }
             }, 250);
