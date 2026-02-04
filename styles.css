@@ -92,6 +92,7 @@ body.light-mode {
 
 html {
     scroll-behavior: smooth;
+    background-color: var(--bg-primary);
 }
 
 body {
@@ -99,6 +100,8 @@ body {
     background-color: var(--bg-primary);
     color: var(--text-primary);
     overflow-x: hidden;
+    min-height: 100vh;
+    min-height: 100dvh;
     transition: background-color 0.5s ease, color 0.5s ease;
 }
 
@@ -147,9 +150,10 @@ body {
     position: fixed;
     top: 0;
     left: 0;
+    right: 0;
+    bottom: 0;
     width: 100%;
     height: 100%;
-    height: 100svh; /* Small viewport height - stable on mobile */
     z-index: 0;
     touch-action: pan-y;
     -webkit-touch-callout: none;
@@ -240,9 +244,13 @@ body {
 }
 
 .contact-icons .icon-link {
-    width: 44px;
-    height: 44px;
+    width: 50px;
+    height: 50px;
     font-size: 1.1rem;
+    background: var(--card-bg);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-color: var(--border-hover);
 }
 
 /* Cards Row - 3 cards side by side, equal width */
@@ -461,8 +469,8 @@ h2.icon-card-label {
     }
 
     .contact-icons .icon-link {
-        width: 40px;
-        height: 40px;
+        width: 44px;
+        height: 44px;
         font-size: 1rem;
     }
 
@@ -545,8 +553,8 @@ h2.icon-card-label {
     }
 
     .contact-icons .icon-link {
-        width: 38px;
-        height: 38px;
+        width: 42px;
+        height: 42px;
         font-size: 0.95rem;
     }
 
@@ -593,8 +601,8 @@ h2.icon-card-label {
     }
 
     .contact-icons .icon-link {
-        width: 36px;
-        height: 36px;
+        width: 40px;
+        height: 40px;
     }
 
     .cards-row {

@@ -362,7 +362,7 @@ class SkyAnimation {
 
     resizeCanvas() {
         this.canvas.width = window.innerWidth;
-        this.canvas.height = window.innerHeight;
+        this.canvas.height = Math.max(window.innerHeight, document.documentElement.clientHeight);
         this.centerX = this.canvas.width / 2;
         this.centerY = this.canvas.height / 2;
     }
