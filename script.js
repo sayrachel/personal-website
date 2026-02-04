@@ -2226,6 +2226,29 @@ document.addEventListener('DOMContentLoaded', () => {
         emailButton.addEventListener('touchend', (e) => { e.preventDefault(); copyEmail(e); });
     }
 
+    // Fix stuck hover state on iOS
+    document.querySelectorAll('.icon-link').forEach(icon => {
+        icon.addEventListener('touchstart', () => {
+            // Remove reset class immediately so hover effect can show again
+            icon.classList.remove('reset-hover');
+        }, {passive: true});
+
+        icon.addEventListener('touchend', () => {
+            setTimeout(() => {
+                icon.classList.add('reset-hover');
+            }, 500);
+        }, {passive: true});
+    });
+
+    // Remove reset class when touching elsewhere
+    document.addEventListener('touchstart', (e) => {
+        document.querySelectorAll('.icon-link.reset-hover').forEach(icon => {
+            if (!icon.contains(e.target)) {
+                icon.classList.remove('reset-hover');
+            }
+        });
+    }, {passive: true});
+
     // Profile fallback
     const profilePic = document.getElementById('profile-pic');
     if (profilePic) {

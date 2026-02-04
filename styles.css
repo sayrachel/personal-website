@@ -367,6 +367,21 @@ h2.icon-card-label {
     box-shadow: 0 8px 25px var(--card-shadow);
 }
 
+.icon-link.reset-hover {
+    transform: translateY(0) !important;
+    border-color: var(--border-color) !important;
+    color: var(--icon-color) !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transition: transform 0.3s ease, color 0.3s ease, border-color 0.3s ease, background 0.3s ease, box-shadow 0.3s ease !important;
+    will-change: transform;
+}
+
+.contact-icons .icon-link.reset-hover {
+    background: var(--card-bg) !important;
+    border-color: var(--border-hover) !important;
+}
+
 /* Tooltip */
 .icon-link::after {
     display: none;
