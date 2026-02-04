@@ -348,7 +348,15 @@ h2.icon-card-label {
 }
 
 .icon-label {
-    display: none;
+    display: block;
+    position: absolute;
+    bottom: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    white-space: nowrap;
 }
 
 .icon-link:hover {
@@ -361,26 +369,7 @@ h2.icon-card-label {
 
 /* Tooltip */
 .icon-link::after {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: -30px;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: var(--card-bg);
-    color: var(--text-primary);
-    padding: 5px 10px;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.3s ease;
-    z-index: 100;
-    border: 1px solid var(--border-color);
-}
-
-.icon-link:hover::after {
-    opacity: 1;
+    display: none;
 }
 
 /* Email copy feedback */
@@ -520,21 +509,22 @@ h2.icon-card-label {
     }
 
     .icon-link {
-        width: 44px;
-        height: 44px;
-        font-size: 1rem;
+        width: 55px;
+        height: 55px;
+        font-size: 1.1rem;
+        overflow: visible;
     }
 
     .icon-label {
         display: block;
+        position: absolute;
+        bottom: -14px;
+        left: 50%;
+        transform: translateX(-50%);
         font-size: 0.5rem;
-        margin-top: 2px;
         color: var(--text-muted);
         font-weight: 400;
-    }
-
-    .icon-link::after {
-        display: none;
+        white-space: nowrap;
     }
 }
 
@@ -567,9 +557,10 @@ h2.icon-card-label {
     }
 
     .icon-link {
-        width: 42px;
-        height: 42px;
-        font-size: 0.95rem;
+        width: 50px;
+        height: 50px;
+        font-size: 1rem;
+        overflow: visible;
     }
 }
 
