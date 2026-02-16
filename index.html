@@ -2,80 +2,139 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="theme-color" content="#0a0a0a">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Rachel Ma - Senior Product Manager building AI-powered productivity tools">
+    <meta property="og:title" content="Rachel Ma">
+    <meta property="og:description" content="Senior Product Manager building AI-powered productivity tools for Meta's next gen devices.">
+    <meta property="og:type" content="website">
     <title>Rachel Ma</title>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="stylesheet" href="styles.css?v=5">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 </head>
 <body>
-    <canvas id="constellation-canvas"></canvas>
-
-    <div class="container">
-        <!-- Header Section -->
-        <header class="header">
-            <div class="profile-image-container">
-                <img src="profile.jpg" alt="Rachel Ma" class="profile-image" id="profile-pic">
-            </div>
-            <h1 class="name">Rachel Ma</h1>
-            <div class="icon-group header-icons">
-                <a href="https://www.linkedin.com/in/irachelma/" target="_blank" class="icon-link" data-tooltip="Linkedin">
-                    <i class="fab fa-linkedin"></i>
-                </a>
-                <button class="icon-link email-copy" data-tooltip="Copy email" data-email="irachelma@gmail.com">
-                    <i class="far fa-envelope"></i>
-                </button>
-            </div>
-        </header>
-
-        <!-- Professional Section -->
-        <section class="section professional-section">
-            <div class="section-emoji">💼</div>
-            <div class="section-content">
-                <p class="section-description">
-                    Senior Product Manager building AI-powered productivity tools for Meta's next generation devices.
-                </p>
-                <p class="section-description">
-                    Track record of shipping zero-to-one products to end users, businesses, and developers.
-                </p>
-                <div class="icon-group">
-                    <a href="https://www.theverge.com/2024/11/1/24285641/meta-quest-os-update-v71-redesign-train-mode-calendar" target="_blank" class="icon-link" data-tooltip="Meta Quest Calendar">
-                        <i class="far fa-calendar-alt"></i>
-                    </a>
-                    <a href="https://www.meta.com/help/quest/1472856609714504/" target="_blank" class="icon-link" data-tooltip="Meta Quest Files">
-                        <i class="far fa-folder-open"></i>
-                    </a>
-                    <a href="https://www.youtube.com/watch?v=XAs7jnDh5rM" target="_blank" class="icon-link" data-tooltip="Meta AI Translation">
-                        <i class="fas fa-language"></i>
-                    </a>
-                </div>
-            </div>
-        </section>
-
-        <!-- Personal Section -->
-        <section class="section personal-section">
-            <div class="section-emoji">✨</div>
-            <div class="section-content">
-                <p class="section-description">
-                    Finding meaning through chasing curiosity, curating ideas, and cultivating movement.
-                </p>
-                <p class="section-description">
-                    Often found learning, building, or dancing.
-                </p>
-                <div class="icon-group">
-                    <div class="icon-link" data-tooltip="Building - stay tuned">
-                        <i class="far fa-lightbulb"></i>
-                    </div>
-                    <a href="https://open.spotify.com/show/4JH4tybY1zX6e5hjCwU6gF?si=e2163b98062c461b" target="_blank" class="icon-link" data-tooltip="Listening">
-                        <i class="fab fa-spotify"></i>
-                    </a>
-                    <a href="https://www.goodreads.com/book/show/44439415-god-emperor-of-dune" target="_blank" class="icon-link" data-tooltip="Reading">
-                        <i class="far fa-bookmark"></i>
-                    </a>
-                </div>
-            </div>
-        </section>
+    <!-- Preloader -->
+    <div class="preloader" id="preloader">
+        <div class="preloader-content">
+            <div class="preloader-spinner"></div>
+        </div>
     </div>
 
+    <canvas id="constellation-canvas"></canvas>
+
+    <!-- Theme Toggle -->
+    <div class="theme-toggle-container" id="theme-toggle-container">
+        <button class="theme-toggle-btn" id="theme-toggle-btn" aria-label="Toggle theme">
+            <i class="fas fa-moon theme-icon" id="theme-icon-moon"></i>
+            <i class="fa-regular fa-sun theme-icon" id="theme-icon-sun"></i>
+        </button>
+    </div>
+
+    <main class="main-container">
+        <!-- Hero Section - All content in one viewport -->
+        <section class="hero-section" aria-label="Introduction">
+            <header class="hero-header">
+                <figure class="profile-image-container">
+                    <img src="profile.jpg" alt="Rachel Ma - Profile Photo" class="profile-image" id="profile-pic">
+                </figure>
+                <h1 class="name">Rachel Ma</h1>
+
+                <!-- Contact icons directly under name -->
+                <div class="contact-section">
+                    <h2 class="contact-label">Contact</h2>
+                    <nav class="contact-icons" aria-label="Contact links">
+                        <a href="https://www.linkedin.com/in/irachelma/" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="LinkedIn" aria-label="LinkedIn profile">
+                            <i class="fab fa-linkedin" aria-hidden="true"></i>
+                            <span class="icon-label">LinkedIn</span>
+                        </a>
+                        <button class="icon-link email-copy" data-tooltip="Copy email" data-email="irachelma@gmail.com" aria-label="Copy email address">
+                            <i class="far fa-envelope" aria-hidden="true"></i>
+                            <span class="icon-label">Email</span>
+                        </button>
+                        <a href="https://github.com/sayrachel" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="GitHub" aria-label="GitHub profile">
+                            <i class="fab fa-github" aria-hidden="true"></i>
+                            <span class="icon-label">GitHub</span>
+                        </a>
+                    </nav>
+                </div>
+            </header>
+
+            <!-- Three cards in a row -->
+            <div class="cards-row">
+                <!-- Work Card -->
+                <article class="content-card">
+                    <p class="card-description">
+                        Senior Product Manager @ Meta building AI-powered productivity tools for next generation devices.
+                    </p>
+                    <div class="card-divider" role="separator"></div>
+                    <h2 class="icon-card-label">Launched</h2>
+                    <nav class="icon-group" aria-label="Launched products">
+                        <a href="https://www.theverge.com/2024/11/1/24285641/meta-quest-os-update-v71-redesign-train-mode-calendar" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Calendar" aria-label="Meta Quest Calendar">
+                            <i class="far fa-calendar-alt" aria-hidden="true"></i>
+                            <span class="icon-label">Calendar</span>
+                        </a>
+                        <a href="https://www.meta.com/help/quest/1472856609714504/" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Files" aria-label="Meta Quest Files">
+                            <i class="far fa-folder-open" aria-hidden="true"></i>
+                            <span class="icon-label">Files</span>
+                        </a>
+                        <a href="https://www.youtube.com/watch?v=XAs7jnDh5rM" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Translate" aria-label="Meta AI Translation">
+                            <i class="fas fa-language" aria-hidden="true"></i>
+                            <span class="icon-label">Translate</span>
+                        </a>
+                    </nav>
+                </article>
+
+                <!-- Projects Card -->
+                <article class="content-card">
+                    <p class="card-description">
+                        Tinkering on the side.
+                    </p>
+                    <div class="card-divider" role="separator"></div>
+                    <h2 class="icon-card-label">Projects</h2>
+                    <nav class="icon-group" aria-label="Projects">
+                        <a href="https://github.com/sayrachel/running-routes" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Run Routes" aria-label="Run Routes">
+                            <i class="fas fa-person-running" aria-hidden="true"></i>
+                            <span class="icon-label">Run Routes</span>
+                        </a>
+                        <a href="https://t.me/NeuralBriefingBot" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="AI News Bot" aria-label="AI News Bot">
+                            <i class="fab fa-telegram" aria-hidden="true"></i>
+                            <span class="icon-label">AI News Bot</span>
+                        </a>
+                        <a href="/" class="icon-link" data-tooltip="Website" aria-label="Website">
+                            <i class="fas fa-globe" aria-hidden="true"></i>
+                            <span class="icon-label">Website</span>
+                        </a>
+                    </nav>
+                </article>
+
+                <!-- Interests Card -->
+                <article class="content-card">
+                    <p class="card-description">
+                        Finding meaning through chasing curiosity and curating ideas.
+                    </p>
+                    <div class="card-divider" role="separator"></div>
+                    <h2 class="icon-card-label">My Training Data</h2>
+                    <nav class="icon-group" aria-label="Current activities">
+                        <a href="https://open.spotify.com/show/4JH4tybY1zX6e5hjCwU6gF?si=e2163b98062c461b" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Listening" aria-label="Currently listening to podcast">
+                            <i class="fas fa-podcast" aria-hidden="true"></i>
+                            <span class="icon-label">Listening</span>
+                        </a>
+                        <a href="https://www.goodreads.com/book/show/44439415-god-emperor-of-dune" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Reading" aria-label="Currently reading on Goodreads">
+                            <i class="far fa-bookmark" aria-hidden="true"></i>
+                            <span class="icon-label">Reading</span>
+                        </a>
+                        <a href="https://www.economist.com/" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Browsing" aria-label="Browsing The Economist">
+                            <i class="fas fa-newspaper" aria-hidden="true"></i>
+                            <span class="icon-label">Browsing</span>
+                        </a>
+                    </nav>
+                </article>
+            </div>
+        </section>
+    </main>
+
     <script src="script.js"></script>
+    <script defer src="https://va.vercel-scripts.com/v1/script.js"></script>
 </body>
 </html>
