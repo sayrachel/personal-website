@@ -594,7 +594,7 @@ class SkyAnimation {
         }
 
         // Add hazy atmosphere clouds scattered everywhere
-        const numHazy = this.isMobile ? 18 : 15;
+        const numHazy = this.isMobile ? 30 : 25;
         for (let i = 0; i < numHazy; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = 100 + Math.random() * maxDimension * 0.7; // Everywhere
@@ -606,7 +606,7 @@ class SkyAnimation {
         }
 
         // Add distant semi-transparent clouds scattered everywhere
-        const numDistant = this.isMobile ? 22 : 20;
+        const numDistant = this.isMobile ? 35 : 30;
         for (let i = 0; i < numDistant; i++) {
             const angle = Math.random() * Math.PI * 2;
             const radius = 150 + Math.random() * maxDimension * 0.8; // Everywhere
