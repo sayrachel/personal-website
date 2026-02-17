@@ -2276,7 +2276,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let cardsHtml = '';
         icons.forEach(icon => {
-            const desc = icon.getAttribute('data-description') || '';
+            const desc = (icon.getAttribute('data-description') || '').replace(/\|\|/g, '<br><br>');
             cardsHtml += `<article class="content-card detail-card">${icon.outerHTML}<p class="detail-card-text">${desc}</p></article>`;
         });
 
