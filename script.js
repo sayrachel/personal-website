@@ -72,6 +72,7 @@ class ThemeToggleController {
         if (savedTheme === 'light') {
             this.currentValue = 100;
             document.body.classList.add('light-mode');
+            this.setThemeColor('#e8f4fc');
         }
 
         // Set initial icon state
@@ -188,10 +189,21 @@ class ThemeToggleController {
         if (this.currentValue > 50) {
             document.body.classList.add('light-mode');
             localStorage.setItem('theme', 'light');
+            this.setThemeColor('#e8f4fc');
         } else {
             document.body.classList.remove('light-mode');
             localStorage.setItem('theme', 'dark');
+            this.setThemeColor('#0a0a0a');
         }
+    }
+
+    setThemeColor(color) {
+        let meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) meta.remove();
+        meta = document.createElement('meta');
+        meta.name = 'theme-color';
+        meta.content = color;
+        document.head.appendChild(meta);
     }
 
     updateSky() {
@@ -2301,18 +2313,50 @@ document.addEventListener('DOMContentLoaded', () => {
         detailPage.offsetHeight;
         detailPage.classList.add('visible');
         window.scrollTo(0, 0);
+        history.pushState({ detail: detailId }, '', '');
     }
 
-    function closeDetail() {
+    let isClosing = false;
+
+    function closeDetail(source) {
         const activePage = document.querySelector('.detail-page.active');
-        if (!activePage || !mainContainer) return;
+        if (!activePage || !mainContainer || isClosing) return;
+
+        isClosing = true;
 
         activePage.classList.remove('visible');
         setTimeout(() => {
             activePage.classList.remove('active');
             mainContainer.classList.remove('hidden');
+            isClosing = false;
         }, 300);
+
+        if (source !== 'popstate') {
+            history.back();
+        }
     }
+
+    window.addEventListener('popstate', () => closeDetail('popstate'));
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+
+    document.addEventListener('touchstart', (e) => {
+        if (!document.querySelector('.detail-page.active') || isClosing) return;
+        touchStartX = e.changedTouches[0].clientX;
+        touchStartY = e.changedTouches[0].clientY;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (!document.querySelector('.detail-page.active') || isClosing) return;
+
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = Math.abs(e.changedTouches[0].clientY - touchStartY);
+
+        if (dx > 60 && dx > dy) {
+            closeDetail();
+        }
+    }, { passive: true });
 
     cards.forEach(card => {
         card.addEventListener('click', (e) => {
