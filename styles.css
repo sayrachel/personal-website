@@ -253,7 +253,7 @@ body {
     border-color: var(--border-hover);
 }
 
-/* Cards Row - 3 cards side by side, equal width */
+/* Cards Row - 4 cards side by side, equal width */
 .cards-row {
     display: flex;
     flex-wrap: wrap;
@@ -261,7 +261,7 @@ body {
     justify-content: center;
     align-items: stretch;
     width: 100%;
-    max-width: 1020px;
+    max-width: 1480px;
 }
 
 /* Content Cards - Fixed width for equal sizing */
