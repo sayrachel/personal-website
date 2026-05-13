@@ -44,11 +44,18 @@
                     <img src="profile.jpg" alt="Rachel Ma - Profile Photo" class="profile-image" id="profile-pic">
                 </figure>
                 <h1 class="name">Rachel Ma</h1>
+            </header>
 
-                <!-- Contact icons directly under name -->
-                <div class="contact-section">
-                    <h2 class="contact-label">Contact</h2>
-                    <nav class="contact-icons" aria-label="Contact links">
+            <!-- Three cards in a row -->
+            <div class="cards-row">
+                <!-- Contact Card -->
+                <article class="content-card">
+                    <p class="card-description">
+                        First gen kid that's lived in 12 cities across 4 continents. Now I'm in NYC building early stage products and chasing emerging tech. Say hi.
+                    </p>
+                    <div class="card-divider" role="separator"></div>
+                    <h2 class="icon-card-label">Contact</h2>
+                    <nav class="icon-group" aria-label="Contact links">
                         <a href="https://www.linkedin.com/in/sayrachel/" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="LinkedIn" aria-label="LinkedIn profile">
                             <i class="fab fa-linkedin" aria-hidden="true"></i>
                             <span class="icon-label">LinkedIn</span>
@@ -66,15 +73,14 @@
                             <span class="icon-label">GitHub</span>
                         </a>
                     </nav>
-                </div>
-            </header>
+                </article>
 
-            <!-- Three cards in a row -->
-            <div class="cards-row">
                 <!-- Work Card -->
                 <article class="content-card" data-detail="detail-launched">
                     <p class="card-description">
                         Senior Product Manager @ Meta building AI-powered productivity tools for next generation AR/VR devices.
+                        <br><br>
+                        Track record of shipping zero-to-one products to end users, businesses and developers impacting millions of users.
                     </p>
                     <div class="card-divider" role="separator"></div>
                     <h2 class="icon-card-label">Launches</h2>
@@ -98,32 +104,21 @@
                     </nav>
                 </article>
 
-                <!-- Projects Card -->
-                <article class="content-card" data-detail="detail-projects">
+                <!-- Tinkering & Writing Card -->
+                <article class="content-card" data-detail="detail-output">
                     <p class="card-description">
-                        Tinkering.
+                        Tinkering & Writing.
                     </p>
                     <div class="card-divider" role="separator"></div>
-                    <h2 class="icon-card-label">Builds</h2>
-                    <nav class="icon-group" aria-label="Builds">
-                        <a href="https://github.com/sayrachel/running-routes" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Run Routes" aria-label="Run Routes" data-description="A mobile app that generates running routes.||Built with React Native and Expo to be cross-platform, OSRM to generate routes along real streets, Overpass API for green spaces anchoring, and Firestore to persist run history and for auth. Coming soon to iOS.">
+                    <h2 class="icon-card-label">Output</h2>
+                    <nav class="icon-group" aria-label="Output">
+                        <a href="https://github.com/sayrachel/running-routes" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Run App" aria-label="Run App" data-description="A mobile app that generates running routes.||Built with React Native and Expo to be cross-platform, OSRM to generate routes along real streets, Overpass API for green spaces anchoring, and Firestore to persist run history and for auth. Coming soon to iOS.">
                             <i class="fas fa-person-running" aria-hidden="true"></i>
-                            <span class="icon-label">Run Routes</span>
+                            <span class="icon-label">Run App</span>
                         </a>
-                    </nav>
-                </article>
-
-                <!-- Musings Card -->
-                <article class="content-card" data-detail="detail-musings">
-                    <p class="card-description">
-                        Writing.
-                    </p>
-                    <div class="card-divider" role="separator"></div>
-                    <h2 class="icon-card-label">Musings</h2>
-                    <nav class="icon-group" aria-label="Musings">
-                        <a href="https://substack.com/home/post/p-196457363" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Building Run Routes" aria-label="Building Run Routes" data-description="Building a run route generator.||The algorithm was hard. Testing it under API rate limits was harder. An offline harness solved both.">
-                            <i class="fas fa-person-running" aria-hidden="true"></i>
-                            <span class="icon-label">Run Routes</span>
+                        <a href="https://substack.com/home/post/p-196457363" target="_blank" rel="noopener noreferrer" class="icon-link" data-tooltip="Run Article" aria-label="Run Article" data-description="Building a run route generator.||The algorithm was hard. Testing it under API rate limits was harder. An offline harness solved both.">
+                            <i class="fas fa-pencil" aria-hidden="true"></i>
+                            <span class="icon-label">Run Article</span>
                         </a>
                     </nav>
                 </article>
