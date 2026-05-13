@@ -277,6 +277,11 @@ body {
     transition: background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
     display: flex;
     flex-direction: column;
+    /* Promote to own GPU composite layer to stabilize backdrop-filter
+       blur over the constantly-redrawing star canvas (prevents flicker) */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    isolation: isolate;
 }
 
 /* Less blur in dark mode so constellations show through */
