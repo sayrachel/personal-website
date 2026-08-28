@@ -2273,3 +2273,64 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
 });
+
+/* ============================================
+   DETAIL PAGES
+   Wires up the .detail-page styles that were already in styles.css
+   but never had any JS behind them. Triggered by [data-detail] on the
+   Resume card icons; closed by the back button or Escape.
+   ============================================ */
+(function () {
+    const main = document.querySelector('.main-container');
+    const triggers = document.querySelectorAll('[data-detail]');
+    if (!main || !triggers.length) return;
+
+    let openPage = null;
+
+    function openDetail(id) {
+        const page = document.getElementById('detail-' + id);
+        if (!page || openPage) return;
+        openPage = page;
+        main.classList.add('hidden');
+        page.classList.add('active');
+        // Two frames so the browser registers display:flex before the
+        // opacity transition starts -- otherwise it snaps in with no fade.
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+            page.classList.add('visible');
+        }));
+        window.scrollTo(0, 0);
+        const back = page.querySelector('.back-button');
+        if (back) back.focus();
+    }
+
+    function closeDetail() {
+        if (!openPage) return;
+        const page = openPage;
+        openPage = null;
+        page.classList.remove('visible');
+        // Matches the 0.3s opacity transition on .detail-page
+        setTimeout(() => {
+            page.classList.remove('active');
+            main.classList.remove('hidden');
+        }, 300);
+    }
+
+    triggers.forEach((el) => {
+        el.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            openDetail(el.getAttribute('data-detail'));
+        });
+    });
+
+    document.querySelectorAll('[data-back]').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            closeDetail();
+        });
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeDetail();
+    });
+})();
